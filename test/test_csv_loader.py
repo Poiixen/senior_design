@@ -1,17 +1,11 @@
 """Tests for the reusable CSV ingestion loader."""
 
 import os
-import sys
 
 import pandas as pd
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend", "ingestion"))
-
-from backend.ingestion.csv_loader import (
-    CSVLoadError,
-    load_csv
-)
+from backend.ingestion.csv_loader import CSVLoadError, load_csv
 
 
 @pytest.fixture

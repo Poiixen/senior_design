@@ -1,19 +1,13 @@
-"""Tests for the UCI Adult dataset adapter."""
+"""Unit tests for the UCI Adult adapter, using synthetic Adult-format rows.
 
-import os
-import sys
+Tests against the real data files live in test_adult_integration.py.
+"""
 
 import pandas as pd
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend", "ingestion"))
-
 from backend.ingestion.adult_adapter import ADULT_COLUMNS, load_adult
 from backend.ingestion.csv_loader import CSVLoadError
-
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw", "UCI_ADULT_INCOME")
-TRAIN_PATH = os.path.join(DATA_DIR, "adult.data")
-TEST_PATH = os.path.join(DATA_DIR, "adult.test")
 
 TRAIN_ROW = (
     "39, State-gov, 77516, Bachelors, 13, Never-married, Adm-clerical,"
@@ -175,21 +169,3 @@ def test_metadata_line_without_data_rows_raises_csv_load_error(tmp_path):
     path.write_text(TEST_METADATA_LINE)
     with pytest.raises(CSVLoadError, match="metadata"):
         load_adult(str(path))
-
-
-@pytest.mark.skipif(not os.path.exists(TRAIN_PATH), reason="UCI adult.data is not available")
-def test_real_train_file_loads_cleanly():
-    df = load_adult(TRAIN_PATH)
-    assert list(df.columns) == ADULT_COLUMNS
-    assert len(df) == 32561
-    assert set(df["income"]) == {"<=50K", ">50K"}
-    assert not df.astype(str).apply(lambda col: col.str.contains(r"^\s|\s$")).any().any()
-
-
-@pytest.mark.skipif(not os.path.exists(TEST_PATH), reason="UCI adult.test is not available")
-def test_real_test_file_loads_cleanly():
-    df = load_adult(TEST_PATH)
-    assert list(df.columns) == ADULT_COLUMNS
-    assert len(df) == 16281
-    assert set(df["income"]) == {"<=50K", ">50K"}
-    assert pd.api.types.is_numeric_dtype(df["age"])
