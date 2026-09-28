@@ -1,94 +1,80 @@
-import os
-import sys
+"""Tests for the generic dataset profiler."""
 
 import pandas as pd
-
-sys.path.insert(
-    0,
-    os.path.join(os.path.dirname(__file__), "..", "backend", "diagnostics")
-)
+import pytest
 
 from backend.diagnostics.generic_dataset_profiler import profile_dataset
 
-def test_profile_dataset_returns_basic_structure():
-    df = pd.DataFrame({
-        "name": ["Alice", "Bob", "Charlie", "David", "Eve"],
-        "age": [20, 21, 22, 23, 24],
-    })
 
-    result = profile_dataset(df)
+def test_reports_shape_and_column_split(simple_clean_df):
+    result = profile_dataset(simple_clean_df)
 
-    assert result["rows"] == 5
-    assert result["columns"] == 2
-    assert result["numeric_columns"] == ["age"]
-    assert result["categorical_columns"] == ["name"]
-
-    assert result["duplicates"]["duplicate_count"] == 0
-    assert result["duplicates"]["duplicate_percentage"] == 0.0
-
-    assert result["missing_values"] == []
+    assert result["rows"] == 6
+    assert result["columns"] == 3
+    assert result["numeric_columns"] == ["id", "score"]
+    assert result["categorical_columns"] == ["group"]
 
 
-def test_profile_dataset_column_details():
-    df = pd.DataFrame({
-        "name": ["Alice", "Bob", "Alice", "David", "Eve"],
-        "age": [20, 21, 20, None, 24],
-    })
+def test_column_details_follow_dataframe_order(simple_clean_df):
+    details = profile_dataset(simple_clean_df)["column_details"]
 
-    result = profile_dataset(df)
-
-    assert result["column_details"][0] == {
-        "name": "name",
+    assert [d["name"] for d in details] == ["id", "score", "group"]
+    assert details[0] == {
+        "name": "id",
+        "dtype": "int64",
+        "category": "numeric",
+        "unique_values": 6,
+    }
+    assert details[2] == {
+        "name": "group",
         "dtype": "object",
         "category": "categorical",
-        "unique_values": 4,
-    }
-
-    assert result["column_details"][1] == {
-        "name": "age",
-        "dtype": "float64",
-        "category": "numeric",
         "unique_values": 3,
     }
 
 
-def test_profile_dataset_counts_duplicate_rows():
-    df = pd.DataFrame({
-        "name": ["Alice", "Bob", "Alice", "Alice"],
-        "age": [20, 21, 20, 20],
-    })
+def test_bools_count_as_numeric_and_dates_as_categorical(mixed_types_df):
+    result = profile_dataset(mixed_types_df)
 
-    result = profile_dataset(df)
+    assert result["numeric_columns"] == ["int_col", "float_col", "bool_col"]
+    assert result["categorical_columns"] == ["str_col", "date_col"]
+
+
+def test_unique_values_ignore_missing(missing_values_df):
+    by_column = {
+        d["name"]: d for d in profile_dataset(missing_values_df)["column_details"]
+    }
+
+    assert by_column["complete"]["unique_values"] == 100
+    assert by_column["high"]["unique_values"] == 60
+
+
+def test_embeds_duplicate_report(duplicate_rows_df):
+    result = profile_dataset(duplicate_rows_df)
 
     assert result["duplicates"]["duplicate_count"] == 2
-    assert result["duplicates"]["duplicate_percentage"] == 50.0
+    assert result["duplicates"]["duplicate_percentage"] == pytest.approx(25.0)
 
 
-def test_profile_dataset_counts_unique_values_and_missing_values():
-    df = pd.DataFrame({
-        "name": ["Alice", "Bob", "Alice", None, "Bob"],
-        "score": [10, 20, 10, 30, None],
-    })
+def test_embeds_missing_value_report(missing_values_df):
+    reported = [r["column_name"] for r in profile_dataset(missing_values_df)["missing_values"]]
 
-    result = profile_dataset(df)
+    assert reported == ["low", "moderate", "high"]
 
-    name_details = result["column_details"][0]
-    score_details = result["column_details"][1]
 
-    assert name_details["unique_values"] == 2
-    assert score_details["unique_values"] == 3
+def test_clean_dataset_reports_no_problems(simple_clean_df):
+    result = profile_dataset(simple_clean_df)
 
-    assert result["missing_values"] == [
-        {
-            "column_name": "name",
-            "missing_count": 1,
-            "missing_percentage": 20.0,
-            "severity": "high",
-        },
-        {
-            "column_name": "score",
-            "missing_count": 1,
-            "missing_percentage": 20.0,
-            "severity": "high",
-        },
-    ]
+    assert result["duplicates"]["duplicate_count"] == 0
+    assert result["missing_values"] == []
+
+
+def test_empty_dataframe_profiles_without_error():
+    result = profile_dataset(pd.DataFrame())
+
+    assert result["rows"] == 0
+    assert result["columns"] == 0
+    assert result["numeric_columns"] == []
+    assert result["categorical_columns"] == []
+    assert result["column_details"] == []
+    assert result["missing_values"] == []

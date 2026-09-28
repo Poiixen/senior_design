@@ -1,0 +1,8 @@
+[tool.pytest.ini_options]
+testpaths = ["test"]
+# Repo root on sys.path so `backend.*` imports work from any cwd.
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+markers = [
+    "integration: exercises the real UCI Adult dataset in data/raw",
+]

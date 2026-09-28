@@ -6,9 +6,27 @@ __pycache__/
 venv/
 *.egg-info/
 
+# Local SQLite databases and sidecar files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+
 # Node
 node_modules/
 
 # Editors / OS
 .vscode/
 .DS_Store
+
+# Stray PowerShell module analysis cache (sometimes created at cwd root)
+Microsoft/
+
