@@ -5,5 +5,5 @@ scikit-learn
 fastapi
 uvicorn
 pydantic
-sqlalchemy
+sqlalchemy>=2.0
 pytest
