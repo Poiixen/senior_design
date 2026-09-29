@@ -3,6 +3,7 @@ import pandas as pd
 ' Csv file loaded, now we check for any data issues. Quality check.'
 def validate_dataset(df: pd.DataFrame) -> dict:
     warnings = []
+    errors = []
     '''
     Returns:
         dict: Validation results containing:
@@ -12,7 +13,6 @@ def validate_dataset(df: pd.DataFrame) -> dict:
             - 'errors' (list[str]): Blocking structural errors preventing analysis.
             - 'warnings' (list[str]): Non-blocking data quality warnings.
     '''
-    errors = []
 
     'check dataframe sturcutre and if it is supported.'
     if not isinstance(df, pd.DataFrame):
