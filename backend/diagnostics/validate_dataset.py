@@ -3,7 +3,6 @@ import pandas as pd
 ' Csv file loaded, now we check for any data issues. Quality check.'
 def validate_dataset(df: pd.DataFrame) -> dict:
     warnings = []
-    row_count, column_count = df.shape
 
     'check dataframe sturcutre and if it is supported.'
     if not isinstance(df, pd.DataFrame):
@@ -14,6 +13,7 @@ def validate_dataset(df: pd.DataFrame) -> dict:
             "columns": 0,
             "warnings": ["Input is not a pandas DataFrame"],
         }
+    row_count, column_count = df.shape
 
     'DATASET--'
 
