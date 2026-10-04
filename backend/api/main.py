@@ -1,5 +1,6 @@
 import os
 import tempfile
+import traceback
 from typing import Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -40,7 +41,10 @@ async def read_upload_with_limit(
         raise UploadError("File must be a CSV (.csv extension required).")
 
     contents = b""
-    async for chunk in file.file:
+    while True:
+        chunk = await file.read(CHUNK_SIZE)
+        if not chunk:
+            break
         contents += chunk
         if len(contents) > max_size:
             raise UploadError(
@@ -106,7 +110,11 @@ async def analyze(file: UploadFile = File(...)) -> dict:
     except UploadError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message)
     except Exception as exc:
-        # Generic error without exposing internals
+        # Log the actual error for debugging
+        error_msg = f"{type(exc).__name__}: {str(exc)}"
+        print(f"API Error: {error_msg}")
+        traceback.print_exc()
+        # Generic error without exposing internals to client
         raise HTTPException(
             status_code=500,
             detail="An unexpected error occurred while processing your upload.",
