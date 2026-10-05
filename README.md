@@ -37,7 +37,7 @@ and the unit tests pass with no dataset on disk.
            ▼               ▼
         Database          API
                             ▼
-                     Future Dashboard
+                     React Dashboard
 ```
 
 Well-formed CSVs go through `load_csv()`. Datasets with quirks get an adapter
@@ -56,6 +56,27 @@ source .venv/Scripts/activate  # Windows (Git Bash)
 
 pip install -r backend/requirements.txt
 ```
+
+### Run the full development stack
+
+The Bash launcher is repository-relative and works from any team member's
+checkout path. It starts both reload-enabled servers, records their process
+IDs under the ignored `.run/` directory, and stops both process trees on
+Ctrl+C.
+
+```bash
+bash ./run-all.sh
+```
+
+If a terminal closes unexpectedly or either development port remains busy,
+run the cleanup script before restarting:
+
+```bash
+bash ./stop-all.sh
+```
+
+The cleanup script first uses this checkout's PID files, then clears listeners
+on the two project development ports (`5173` and `8000`) as a fallback.
 
 ## Database
 
@@ -78,19 +99,91 @@ stored, only metadata and findings. Group writes with `session_scope(engine)`.
 uvicorn backend.api.main:app --reload
 ```
 
-`GET /health`, and `POST /api/analyze` taking a CSV upload. Docs at `/docs`.
+`GET /health`, `POST /api/analyze`, and `GET /api/reports/{analysis_id}`.
+Interactive API docs are available at `http://127.0.0.1:8000/docs`.
+
+The upload endpoint accepts multipart form fields:
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `file` | required | CSV file |
+| `delimiter` | `,` | Comma, semicolon, tab, or pipe in the upload UI |
+| `has_header` | `true` | Whether the first row contains column names |
+| `missing_values` | `[]` | JSON array of additional missing-value strings; standard pandas markers remain enabled |
+
+Successful uploads return the complete report, including `analysis_id`. The
+frontend opens `/reports/{analysis_id}` and retrieves the saved report from the
+API. Reports survive page refreshes and backend restarts. Raw CSV rows are not
+retained; only metadata and diagnostic summaries are saved.
 
 ## Frontend
 
-React Router app.
+React Router v8 dashboard for dataset analysis. Full-stack type safety with
+TypeScript and React Router's file-based routing. Styled with Tailwind CSS v4.
+
+### How it works
+
+The frontend is a single-page application with three main routes:
+
+- **Home** (`/`) — Upload CSV form with parsing options (delimiter, header row, custom missing-value markers). Submits to the backend API and redirects to the report on success.
+- **Report** (`/reports/:id`) — Displays analysis results: dataset summary, missing-value table (sortable), duplicate count, and numeric outliers. `/reports/sample` is a static demo that works without a backend.
+- **Documentation** (`/documentation`) — Guide and reference.
+
+The app is API-driven: it uploads files to `POST /api/analyze` and fetches reports from `GET /api/reports/:id`.
+Results persist across page refreshes and backend restarts. Raw CSV rows are never stored, only metadata
+and diagnostic findings.
+
+### Running the frontend
+
+Requires **Node.js 22+** and the backend running separately.
 
 ```bash
 cd frontend
-npm install
-npm run dev        # hot reload
-npm run build
-npm run typecheck
+npm install                # Install dependencies (one time)
+npm run dev                # Start dev server with hot reload at http://127.0.0.1:5173
+npm run build              # Production build
+npm run typecheck          # TypeScript checking
 ```
+
+### Configuration
+
+Copy `frontend/.env.example` to `frontend/.env` and restart the dev server after changes:
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `API_PROXY_TARGET` | `http://127.0.0.1:8000` | Backend for development; Vite proxies `/api` requests here |
+| `VITE_API_BASE_URL` | empty | Public API origin for production (without `/api`); empty uses same-origin |
+
+During development, the Vite proxy makes all requests same-origin, so no CORS setup is needed.
+For production, configure your web server to route `/api` to FastAPI or set `VITE_API_BASE_URL`
+at build time and ensure the backend allows that origin.
+
+### Report schema
+
+The API response schema is documented in [frontend/app/lib/report.ts](frontend/app/lib/report.ts).
+- `dataset` — dimensions (rows, columns, numeric/categorical counts)
+- `summary` — column counts, duplicate totals, issue total, and execution status
+- `missing_values` — all columns with missing counts and severity
+- `outliers` — all numeric columns with bounds, counts, and flagged values
+
+`summary.issues_detected` counts distinct problems (one per affected column for missing values,
+one per numeric column for outliers, one for duplicates, one per warning), not individual bad cells.
+`status: "completed"` indicates successful execution, independent of issue count.
+
+Missing severity: none (0%), low (<5%), moderate (<20%), high (≥20%).
+Outliers are flagged for review, not automatically incorrect. Missing and outlier percentages use
+appropriate denominators (all rows for missing, non-missing numeric values for outliers).
+A JSON `null` measurement displays as **Unavailable**; `0` remains `0`.
+
+### Troubleshooting
+
+| Problem | Fix |
+| --- | --- |
+| `Cannot find module` errors | Run `npm install` in the frontend folder |
+| `react-router requires Node > 22.22.0` | Upgrade Node.js at https://nodejs.org/ |
+| Port 5173 already in use | Kill the process on that port or edit `frontend/vite.config.ts` `port` value |
+| API calls fail or timeout | Ensure backend is running on `http://127.0.0.1:8000` (or update `API_PROXY_TARGET`) |
+| Changes don't appear | Save the file; Vite hot-reloads automatically. If not, restart `npm run dev` |
 
 ## Tests
 
