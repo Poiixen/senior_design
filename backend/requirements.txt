@@ -1,4 +1,7 @@
-pandas
+# pandas 3 gives string columns a dedicated `str` dtype, so the object-dtype
+# checks in the ingestion and profiling code stop matching. Pin until the
+# code is updated for pandas 3.
+pandas>=2.2,<3
 numpy
 scipy
 scikit-learn
