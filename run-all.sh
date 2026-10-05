@@ -103,8 +103,13 @@ BOOTSTRAP_PYTHON="$(find_bootstrap_python)" || {
 command -v node >/dev/null 2>&1 || { error "Node.js was not found."; exit 1; }
 command -v npm >/dev/null 2>&1 || { error "npm was not found."; exit 1; }
 
-NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
-(( NODE_MAJOR >= 22 )) || { error "Node.js 22+ is required; found $(node --version)."; exit 1; }
+read -r NODE_MAJOR NODE_MINOR NODE_PATCH < <(
+    node -p 'process.versions.node.split(".").map(Number).join(" ")'
+)
+(( NODE_MAJOR > 22 || (NODE_MAJOR == 22 && NODE_MINOR >= 22) )) || {
+    error "Node.js 22.22.0 or newer is required; found $(node --version)."
+    exit 1
+}
 
 if [[ -e "$VENV_PYTHON" ]] && ! "$VENV_PYTHON" --version >/dev/null 2>&1; then
     status "Repairing a stale Python virtual environment..."
@@ -143,6 +148,12 @@ wait_for_url() {
     return 1
 }
 
+write_pid_file() {
+    local file="$1" pid="$2" identity
+    identity="$(ps -p "$pid" -f 2>/dev/null | tail -n 1 | sed 's/^[[:space:]]*//' || true)"
+    printf '%s\n%s\n' "$pid" "$identity" > "$file"
+}
+
 status "Starting backend with reload limited to backend Python files..."
 (
     cd "$REPO_ROOT"
@@ -151,7 +162,7 @@ status "Starting backend with reload limited to backend Python files..."
         --host 127.0.0.1 --port 8000
 ) &
 BACKEND_PID=$!
-printf '%s\n' "$BACKEND_PID" > "$BACKEND_PID_FILE"
+write_pid_file "$BACKEND_PID_FILE" "$BACKEND_PID"
 wait_for_url "Backend" "http://127.0.0.1:8000/health" "$BACKEND_PID"
 
 status "Starting frontend development server..."
@@ -160,7 +171,7 @@ status "Starting frontend development server..."
     exec npm run dev
 ) &
 FRONTEND_PID=$!
-printf '%s\n' "$FRONTEND_PID" > "$FRONTEND_PID_FILE"
+write_pid_file "$FRONTEND_PID_FILE" "$FRONTEND_PID"
 wait_for_url "Frontend" "http://127.0.0.1:5173/" "$FRONTEND_PID"
 
 printf '\n'

@@ -68,12 +68,14 @@ export async function analyzeDataset(file: File, options: ParsingOptions, signal
 
 export function getReport(analysisId: string, signal?: AbortSignal, origin?: string): Promise<AnalysisReport> {
   const path = `/api/reports/${encodeURIComponent(analysisId)}`;
-  return requestReport(origin ? new URL(path, origin).toString() : path, { signal });
+  const base = apiBase || origin;
+  return requestReport(base ? new URL(path, base).toString() : path, { signal });
 }
 
 export async function getReports(signal?: AbortSignal, origin?: string): Promise<ReportSummary[]> {
   const path = "/api/reports";
-  const url = origin ? new URL(path, origin).toString() : `${apiBase}${path}`;
+  const base = apiBase || origin;
+  const url = base ? new URL(path, base).toString() : path;
   let response: Response;
   try {
     response = await fetch(url, { signal });

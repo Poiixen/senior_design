@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database import repository
 from backend.database.connection import (
@@ -22,6 +23,22 @@ from backend.ingestion.csv_loader import CSVLoadError, load_csv
 from backend.services.analysis_service import AnalysisService
 
 app = FastAPI(title="Team Science API")
+
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://127.0.0.1:5173,http://localhost:5173",
+    ).split(",")
+    if origin.strip()
+]
+if allowed_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_methods=["GET", "POST"],
+        allow_headers=["*"],
+    )
 
 database_path = os.getenv("DATABASE_PATH", str(DEFAULT_DATABASE_PATH))
 engine = create_sqlite_engine(database_path)
@@ -58,12 +75,12 @@ async def read_upload_with_limit(
     if not file.filename.lower().endswith(".csv"):
         raise UploadError("File must be a CSV (.csv extension required).")
 
-    contents = b""
+    contents = bytearray()
     while True:
         chunk = await file.read(CHUNK_SIZE)
         if not chunk:
             break
-        contents += chunk
+        contents.extend(chunk)
         if len(contents) > max_size:
             raise UploadError(
                 f"File exceeds maximum size of {max_size // (1024 * 1024)} MB.",
@@ -73,7 +90,7 @@ async def read_upload_with_limit(
     if len(contents) == 0:
         raise UploadError("File is empty.")
 
-    return contents
+    return bytes(contents)
 
 
 def parse_missing_values(raw_value: str) -> list[str]:
@@ -139,7 +156,9 @@ async def analyze(
                 skipinitialspace=True,
             )
         except CSVLoadError as exc:
-            raise UploadError(str(exc))
+            raise UploadError(
+                "The CSV file could not be parsed. Check its delimiter and formatting."
+            ) from exc
         except UnicodeDecodeError:
             raise UploadError(
                 "File encoding is not supported. Please use UTF-8 or ASCII."

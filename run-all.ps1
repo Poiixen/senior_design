@@ -39,9 +39,13 @@ try {
 PrintStatus "Checking Node.js..."
 try {
     $nodeVersion = & node --version
+    $parsedNodeVersion = [version]($nodeVersion.TrimStart("v"))
+    if ($parsedNodeVersion -lt [version]"22.22.0") {
+        throw "Node.js 22.22.0 or newer is required; found $nodeVersion"
+    }
     PrintSuccess "Node.js $nodeVersion"
 } catch {
-    PrintError "Node.js not found"
+    PrintError $_.Exception.Message
     exit 1
 }
 
@@ -81,6 +85,7 @@ $backendJob = Get-Job -Id $backend.Id
 if ($backendJob.State -eq "Failed") {
     PrintError "Backend failed to start"
     Receive-Job -Id $backend.Id
+    Remove-Job -Id $backend.Id -Force -ErrorAction SilentlyContinue
     exit 1
 }
 
@@ -104,6 +109,13 @@ while ($waited -lt $maxWait) {
     }
 }
 
+if ($waited -ge $maxWait) {
+    PrintError "Backend did not start listening on port 8000"
+    Stop-Job -Id $backend.Id -ErrorAction SilentlyContinue
+    Remove-Job -Id $backend.Id -Force -ErrorAction SilentlyContinue
+    exit 1
+}
+
 Write-Host ""
 Write-Host ""
 PrintStatus "Starting frontend..."
@@ -120,10 +132,11 @@ Write-Host "Starting Frontend Dev Server..." -ForegroundColor Green
 Write-Host "Open: http://127.0.0.1:5173" -ForegroundColor Cyan
 Write-Host ""
 
-& npm run dev
-
-# Cleanup
-Write-Host ""
-Write-Host "Stopping backend..." -ForegroundColor Cyan
-Stop-Job -Id $backend.Id -ErrorAction SilentlyContinue
-Remove-Job -Id $backend.Id -ErrorAction SilentlyContinue
+try {
+    & npm.cmd run dev
+} finally {
+    Write-Host ""
+    Write-Host "Stopping backend..." -ForegroundColor Cyan
+    Stop-Job -Id $backend.Id -ErrorAction SilentlyContinue
+    Remove-Job -Id $backend.Id -Force -ErrorAction SilentlyContinue
+}

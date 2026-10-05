@@ -135,7 +135,7 @@ and diagnostic findings.
 
 ### Running the frontend
 
-Requires **Node.js 22+** and the backend running separately.
+Requires **Node.js 22.22.0+** and the backend running separately.
 
 ```bash
 cd frontend
@@ -153,6 +153,7 @@ Copy `frontend/.env.example` to `frontend/.env` and restart the dev server after
 | --- | --- | --- |
 | `API_PROXY_TARGET` | `http://127.0.0.1:8000` | Backend for development; Vite proxies `/api` requests here |
 | `VITE_API_BASE_URL` | empty | Public API origin for production (without `/api`); empty uses same-origin |
+| `CORS_ALLOWED_ORIGINS` | local Vite origins | Backend setting: comma-separated frontend origins allowed to call the API |
 
 During development, the Vite proxy makes all requests same-origin, so no CORS setup is needed.
 For production, configure your web server to route `/api` to FastAPI or set `VITE_API_BASE_URL`
@@ -161,7 +162,7 @@ at build time and ensure the backend allows that origin.
 ### Report schema
 
 The API response schema is documented in [frontend/app/lib/report.ts](frontend/app/lib/report.ts).
-- `dataset` — dimensions (rows, columns, numeric/categorical counts)
+- `dataset` — dimensions (rows and columns)
 - `summary` — column counts, duplicate totals, issue total, and execution status
 - `missing_values` — all columns with missing counts and severity
 - `outliers` — all numeric columns with bounds, counts, and flagged values

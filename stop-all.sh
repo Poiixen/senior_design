@@ -34,11 +34,18 @@ stop_tree() {
 stop_pid_file() {
     local file="$1"
     [[ -f "$file" ]] || return 0
-    local pid
-    pid="$(tr -cd '0-9' < "$file")"
+    local pid expected_identity current_identity
+    IFS= read -r pid < "$file"
+    pid="${pid//[^0-9]/}"
+    expected_identity="$(tail -n +2 "$file" 2>/dev/null || true)"
     if [[ -n "$pid" ]] && pid_is_running "$pid"; then
-        printf 'Stopping process tree %s...\n' "$pid"
-        stop_tree "$pid"
+        current_identity="$(ps -p "$pid" -f 2>/dev/null | tail -n 1 | sed 's/^[[:space:]]*//' || true)"
+        if [[ -n "$expected_identity" && "$current_identity" == "$expected_identity" ]]; then
+            printf 'Stopping verified process tree %s...\n' "$pid"
+            stop_tree "$pid"
+        else
+            printf 'Skipping stale PID %s because its process identity no longer matches.\n' "$pid" >&2
+        fi
     fi
     rm -f -- "$file"
 }
