@@ -11,7 +11,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.models import Analysis, Dataset, DiagnosticResult
+from backend.models import Analysis, Dataset, DiagnosticResult, ReportRecord
 
 
 def create_dataset(
@@ -84,6 +84,27 @@ def finish_analysis(
     analysis.completed_at = datetime.utcnow()
     session.flush()
     return analysis
+
+
+def save_report(
+    session: Session, analysis_id: int, *, schema_version: int, report_json: str
+) -> ReportRecord:
+    """Store the report snapshot for an analysis in the caller's transaction."""
+    if get_analysis(session, analysis_id) is None:
+        raise ValueError(f"Analysis {analysis_id} does not exist")
+    record = ReportRecord(
+        analysis_id=analysis_id,
+        schema_version=schema_version,
+        report_json=report_json,
+    )
+    session.add(record)
+    session.flush()
+    return record
+
+
+def get_report(session: Session, analysis_id: int) -> Optional[ReportRecord]:
+    """Return the saved report snapshot, or None when the run has none."""
+    return session.get(ReportRecord, analysis_id)
 
 
 def save_diagnostic_result(

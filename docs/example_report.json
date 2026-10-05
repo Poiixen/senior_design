@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "dataset_id": 1,
+  "analysis_id": 1,
+  "status": "completed",
+  "started_at": "2026-10-05T05:34:12.505140",
+  "completed_at": "2026-10-05T05:34:12.518764",
+  "valid": true,
+  "parsing_options": {},
+  "profile": {
+    "rows": 3,
+    "columns": 2,
+    "numeric_columns": [
+      "age"
+    ],
+    "categorical_columns": [
+      "name"
+    ],
+    "column_details": [
+      {
+        "name": "name",
+        "dtype": "object",
+        "category": "categorical",
+        "unique_values": 2
+      },
+      {
+        "name": "age",
+        "dtype": "float64",
+        "category": "numeric",
+        "unique_values": 1
+      }
+    ]
+  },
+  "summary": {
+    "issues_detected": 3,
+    "issues_by_severity": {
+      "warning": 2,
+      "high": 1
+    },
+    "issues_by_diagnostic": {
+      "validation": 1,
+      "missing_values": 1,
+      "duplicates": 1
+    }
+  },
+  "findings": [
+    {
+      "diagnostic": "validation",
+      "column": null,
+      "severity": "warning",
+      "value": null,
+      "message": "Dataset is extremely small (fewer than 5 rows)",
+      "recommendation": null,
+      "metadata": null
+    },
+    {
+      "diagnostic": "profile",
+      "column": "name",
+      "severity": "info",
+      "value": 2.0,
+      "message": "Categorical column (object) with 2 unique values.",
+      "recommendation": null,
+      "metadata": {
+        "dtype": "object",
+        "category": "categorical",
+        "unique_values": 2
+      }
+    },
+    {
+      "diagnostic": "profile",
+      "column": "age",
+      "severity": "info",
+      "value": 1.0,
+      "message": "Numeric column (float64) with 1 unique values.",
+      "recommendation": null,
+      "metadata": {
+        "dtype": "float64",
+        "category": "numeric",
+        "unique_values": 1
+      }
+    },
+    {
+      "diagnostic": "missing_values",
+      "column": "age",
+      "severity": "high",
+      "value": 33.33333333333333,
+      "message": "1 of 3 rows have missing values (33.33%).",
+      "recommendation": "Consider imputing or dropping this column.",
+      "metadata": {
+        "missing_count": 1,
+        "total_rows": 3
+      }
+    },
+    {
+      "diagnostic": "duplicates",
+      "column": null,
+      "severity": "warning",
+      "value": 33.33333333333333,
+      "message": "1 of 3 rows are duplicates (33.33%).",
+      "recommendation": "Review and remove duplicate rows if they are unintended.",
+      "metadata": {
+        "duplicate_count": 1,
+        "total_rows": 3
+      }
+    },
+    {
+      "diagnostic": "outliers",
+      "column": "age",
+      "severity": "none",
+      "value": 0.0,
+      "message": "0 values fall outside the IQR bounds [20, 20] (0.00% of non-missing values).",
+      "recommendation": null,
+      "metadata": {
+        "outlier_count": 0,
+        "lower_bound": 20.0,
+        "upper_bound": 20.0
+      }
+    }
+  ]
+}

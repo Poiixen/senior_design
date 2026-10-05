@@ -61,3 +61,20 @@ class DiagnosticResult(Base):
     severity: Mapped[str] = mapped_column(Text)
     value: Mapped[Optional[float]] = mapped_column(Float)
     message: Mapped[str] = mapped_column(Text)
+
+
+class ReportRecord(Base):
+    """Versioned JSON snapshot of a completed analysis (one per analysis).
+
+    A separate table keeps the upgrade additive: ``create_all`` adds it to
+    an existing database without altering or losing existing records.
+    """
+
+    __tablename__ = "analysis_reports"
+
+    analysis_id: Mapped[int] = mapped_column(
+        ForeignKey("analyses.id"), primary_key=True
+    )
+    schema_version: Mapped[int] = mapped_column(Integer)
+    report_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

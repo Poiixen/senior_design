@@ -165,7 +165,8 @@ pyproject.toml                  # pytest config
 | `detect_outliers_iqr(df, column)` | Quartiles, bounds, outlier count and percentage. Default multiplier 1.5 |
 | `detect_numeric_outliers(df)` | The above for every numeric column |
 | `AnalysisService(engine).register_dataset(df, name=...)` | `Dataset` row — metadata and dimensions only |
-| `AnalysisService(engine).run_analysis(dataset_id, df)` | `Analysis` row; findings commit together or the run is marked failed |
+| `AnalysisService(engine).run_analysis(dataset_id, df)` | `Analysis` row. Validates first; blocking errors skip profiling, missing values, duplicates and outliers. Findings commit together or the run is marked failed |
+| `AnalysisService(engine).list_findings(analysis_id)` | Saved `DiagnosticResult` rows for a run |
 
 Percentages are 0–100. Outlier bounds are inclusive.
 
