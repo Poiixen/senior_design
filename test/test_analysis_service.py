@@ -225,24 +225,25 @@ def test_missing_and_duplicate_detection_run_once(service, monkeypatch):
 
 def test_report_is_saved_with_findings(service):
     df = pd.DataFrame({"label": ["a", "a", None], "measurement": [1, 1, 2]})
-    dataset = service.register_dataset(df, name="Readings")
+    dataset = service.register_dataset(df, name="Readings", file_name="readings.csv")
     analysis = service.run_analysis(dataset.id, df)
 
     report = service.get_report(analysis.id)
     findings = service.list_findings(analysis.id)
 
-    assert report.dataset_id == dataset.id
-    assert report.analysis_id == analysis.id
-    assert (report.profile.rows, report.profile.columns, report.valid) == (3, 2, True)
-    assert report.status == "completed"
-    assert report.completed_at == analysis.completed_at
-    assert len(report.findings) == len(findings)
-    assert [f.diagnostic for f in report.findings] == [
+    assert report["dataset_id"] == dataset.id
+    assert report["analysis_id"] == analysis.id
+    assert report["filename"] == "readings.csv"
+    assert report["dataset"] == {"rows": 3, "columns": 2}
+    assert report["status"] == "completed"
+    assert report["completed_at"].endswith("Z")
+    assert report["validation"]["valid"] is True
+    assert [f["diagnostic"] for f in report["findings"]] == [
         f.diagnostic_type for f in findings
     ]
-    assert report.summary.issues_detected == sum(
-        f.severity not in {"none", "info"} for f in findings
-    )
+    assert report["summary"]["duplicate_rows"] == 1
+    assert report["summary"]["numeric_columns"] == 1
+    assert report["summary"]["issues_detected"] == len(report["diagnostics"])
 
 
 def test_invalid_dataset_report_is_not_valid(service):
@@ -252,9 +253,10 @@ def test_invalid_dataset_report_is_not_valid(service):
 
     report = service.get_report(analysis.id)
 
-    assert report.valid is False
-    assert report.profile.column_details == []
-    assert {f.diagnostic for f in report.findings} == {"validation"}
+    assert report["validation"]["valid"] is False
+    assert report["missing_values"] == [] and report["outliers"] == []
+    assert report["summary"]["numeric_columns"] == 0
+    assert {f["diagnostic"] for f in report["findings"]} == {"validation"}
 
 
 def test_failed_run_saves_no_report(service, monkeypatch):
@@ -348,23 +350,20 @@ def test_missing_dataset_is_rejected_without_creating_run(service, engine):
 def test_report_round_trips_without_losing_fields(service):
     df = pd.DataFrame({"label": ["a", "a", None], "measurement": [1, 1, 2]})
     dataset = service.register_dataset(df, name="Readings")
-    analysis = service.run_analysis(
-        dataset.id, df, parsing_options={"sep": ",", "encoding": "utf-8"}
-    )
+    options = {"delimiter": ";", "has_header": False, "missing_values": ["?"]}
+    analysis = service.run_analysis(dataset.id, df, parsing_options=options)
 
     saved = service.get_report(analysis.id)
-    original = AnalysisReport.model_validate_json(saved.to_json())
+    validated = AnalysisReport.model_validate(saved)
 
-    assert saved == original
-    assert saved.schema_version == 1
-    assert saved.parsing_options == {"sep": ",", "encoding": "utf-8"}
-    assert saved.profile.numeric_columns == ["measurement"]
-    assert saved.profile.categorical_columns == ["label"]
-    by_diag = {f.diagnostic: f for f in saved.findings if f.is_issue}
-    assert by_diag["missing_values"].metadata == {"missing_count": 1, "total_rows": 3}
-    assert by_diag["missing_values"].recommendation
-    assert by_diag["duplicates"].metadata["duplicate_count"] == 1
-    assert saved.summary.issues_by_diagnostic["duplicates"] == 1
+    assert validated.model_dump(mode="json") == saved
+    assert json.loads(json.dumps(saved, allow_nan=False)) == saved
+    assert saved["schema_version"] == 1
+    assert saved["parsing_options"] == options
+    by_diag = {f["diagnostic"]: f for f in saved["findings"] if f["severity"] != "info"}
+    assert by_diag["missing_values"]["metadata"] == {"missing_count": 1, "total_rows": 3}
+    assert by_diag["missing_values"]["recommendation"]
+    assert by_diag["duplicates"]["metadata"]["duplicate_count"] == 1
 
 
 def test_non_finite_numbers_become_null_and_json_is_valid():

@@ -2,47 +2,75 @@
   "schema_version": 1,
   "dataset_id": 1,
   "analysis_id": 1,
+  "filename": "people.csv",
   "status": "completed",
-  "started_at": "2026-10-05T05:34:12.505140",
-  "completed_at": "2026-10-05T05:34:12.518764",
-  "valid": true,
-  "parsing_options": {},
-  "profile": {
+  "started_at": "2026-10-05T06:04:01.871510Z",
+  "completed_at": "2026-10-05T06:04:01.884654Z",
+  "dataset": {
     "rows": 3,
-    "columns": 2,
-    "numeric_columns": [
-      "age"
-    ],
-    "categorical_columns": [
-      "name"
-    ],
-    "column_details": [
-      {
-        "name": "name",
-        "dtype": "object",
-        "category": "categorical",
-        "unique_values": 2
-      },
-      {
-        "name": "age",
-        "dtype": "float64",
-        "category": "numeric",
-        "unique_values": 1
-      }
-    ]
+    "columns": 2
   },
   "summary": {
     "issues_detected": 3,
-    "issues_by_severity": {
-      "warning": 2,
-      "high": 1
-    },
-    "issues_by_diagnostic": {
-      "validation": 1,
-      "missing_values": 1,
-      "duplicates": 1
-    }
+    "numeric_columns": 1,
+    "categorical_columns": 1,
+    "duplicate_rows": 1,
+    "missing_columns": 1,
+    "outlier_columns": 0
   },
+  "parsing_options": {
+    "delimiter": ",",
+    "has_header": true,
+    "missing_values": []
+  },
+  "missing_values": [
+    {
+      "column_name": "age",
+      "missing_count": 1,
+      "missing_percentage": 33.33333333333333,
+      "severity": "high"
+    }
+  ],
+  "outliers": [
+    {
+      "column_name": "age",
+      "outlier_count": 0,
+      "outlier_percentage": 0.0,
+      "q1": 20.0,
+      "q3": 20.0,
+      "iqr": 0.0,
+      "lower_bound": 20.0,
+      "upper_bound": 20.0
+    }
+  ],
+  "validation": {
+    "valid": true,
+    "rows": 3,
+    "columns": 2,
+    "errors": [],
+    "warnings": [
+      "Dataset is extremely small (fewer than 5 rows)"
+    ]
+  },
+  "diagnostics": [
+    {
+      "type": "missing_values",
+      "column_name": "age",
+      "missing_count": 1,
+      "missing_percentage": 33.33333333333333,
+      "severity": "high"
+    },
+    {
+      "type": "duplicates",
+      "duplicate_count": 1,
+      "duplicate_percentage": 33.33333333333333
+    },
+    {
+      "type": "validation",
+      "severity": "warning",
+      "message": "Dataset is extremely small (fewer than 5 rows)"
+    }
+  ],
   "findings": [
     {
       "diagnostic": "validation",

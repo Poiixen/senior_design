@@ -11,7 +11,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.models import Analysis, Dataset, DiagnosticResult, ReportRecord
+from backend.models import Analysis, AnalysisReport, Dataset, DiagnosticResult
 
 
 def create_dataset(
@@ -86,27 +86,6 @@ def finish_analysis(
     return analysis
 
 
-def save_report(
-    session: Session, analysis_id: int, *, schema_version: int, report_json: str
-) -> ReportRecord:
-    """Store the report snapshot for an analysis in the caller's transaction."""
-    if get_analysis(session, analysis_id) is None:
-        raise ValueError(f"Analysis {analysis_id} does not exist")
-    record = ReportRecord(
-        analysis_id=analysis_id,
-        schema_version=schema_version,
-        report_json=report_json,
-    )
-    session.add(record)
-    session.flush()
-    return record
-
-
-def get_report(session: Session, analysis_id: int) -> Optional[ReportRecord]:
-    """Return the saved report snapshot, or None when the run has none."""
-    return session.get(ReportRecord, analysis_id)
-
-
 def save_diagnostic_result(
     session: Session,
     *,
@@ -154,3 +133,24 @@ def list_diagnostic_results(
         .where(DiagnosticResult.analysis_id == analysis_id)
         .order_by(DiagnosticResult.id)
     ))
+
+
+def save_analysis_report(session: Session, analysis_id: int, report: dict) -> AnalysisReport:
+    """Save the complete structured report in the analysis transaction."""
+    record = AnalysisReport(analysis_id=analysis_id, report=report)
+    session.add(record)
+    session.flush()
+    return record
+
+
+def get_analysis_report(session: Session, analysis_id: int) -> Optional[dict]:
+    record = session.get(AnalysisReport, analysis_id)
+    return record.report if record is not None else None
+
+
+def list_analysis_reports(session: Session) -> list[dict]:
+    """Return saved report snapshots newest first."""
+    records = session.scalars(
+        select(AnalysisReport).order_by(AnalysisReport.analysis_id.desc())
+    )
+    return [record.report for record in records]

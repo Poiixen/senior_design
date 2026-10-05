@@ -14,25 +14,99 @@ from backend.models import Analysis, Dataset, DiagnosticResult
 from backend.models.schemas import (
     REPORT_SCHEMA_VERSION,
     AnalysisReport,
-    DatasetProfile,
+    ParsingOptions,
 )
 from backend.models.schemas import DiagnosticResult as DiagnosticResultSchema
 
 
-def _dataset_profile(df: DataFrame, profile: Optional[dict]) -> DatasetProfile:
-    """Summarize the dataset; column lists stay empty when no profile was run."""
-    rows, columns = len(df), len(df.columns)
-    if profile is None:
-        return DatasetProfile(rows=rows, columns=columns)
-    return DatasetProfile(
-        rows=rows,
-        columns=columns,
-        numeric_columns=[str(name) for name in profile["numeric_columns"]],
-        categorical_columns=[str(name) for name in profile["categorical_columns"]],
-        column_details=[
-            {**detail, "name": str(detail["name"])}
-            for detail in profile["column_details"]
-        ],
+def _utc_timestamp(value) -> Optional[str]:
+    return None if value is None else f"{value.isoformat()}Z"
+
+
+def _measurement(value) -> Optional[float]:
+    return None if value is None else float(value)
+
+
+def _report_diagnostics(validation: dict, profile: Optional[dict], outliers: list) -> list:
+    """Flat issue list used by the report summary and the frontend."""
+    diagnostics = []
+    if profile is not None:
+        diagnostics.extend(
+            {"type": "missing_values", **entry} for entry in profile["missing_values"]
+        )
+        if profile["duplicates"]["duplicate_count"] > 0:
+            diagnostics.append({"type": "duplicates", **profile["duplicates"]})
+        diagnostics.extend(
+            {"type": "outlier", **entry} for entry in outliers if entry["outlier_count"] > 0
+        )
+    diagnostics.extend(
+        {"type": "validation", "severity": "warning", "message": warning}
+        for warning in validation["warnings"]
+    )
+    diagnostics.extend(
+        {"type": "validation", "severity": "error", "message": error}
+        for error in validation["errors"]
+    )
+    return diagnostics
+
+
+def _build_report(
+    *,
+    dataset: Dataset,
+    analysis: Analysis,
+    df: DataFrame,
+    validation: dict,
+    profile: Optional[dict],
+    outliers: list,
+    parsing_options: Optional[dict[str, Any]],
+    findings: list[DiagnosticResultSchema],
+) -> AnalysisReport:
+    """Assemble the saved report from results computed once by the run."""
+    missing_values = [
+        {
+            "column_name": str(entry["column_name"]),
+            "missing_count": int(entry["missing_count"]),
+            "missing_percentage": _measurement(entry["missing_percentage"]),
+            "severity": str(entry["severity"]),
+        }
+        for entry in (profile["missing_values"] if profile else [])
+    ]
+    outlier_results = [
+        {
+            "column_name": str(entry["column_name"]),
+            "outlier_count": int(entry["outlier_count"]),
+            "outlier_percentage": _measurement(entry["outlier_percentage"]),
+            **{
+                key: _measurement(entry[key])
+                for key in ("q1", "q3", "iqr", "lower_bound", "upper_bound")
+            },
+        }
+        for entry in outliers
+    ]
+    diagnostics = _report_diagnostics(validation, profile, outliers)
+    return AnalysisReport(
+        schema_version=REPORT_SCHEMA_VERSION,
+        dataset_id=dataset.id,
+        analysis_id=analysis.id,
+        filename=dataset.file_name or dataset.name,
+        status=analysis.status,
+        started_at=_utc_timestamp(analysis.started_at),
+        completed_at=_utc_timestamp(analysis.completed_at),
+        dataset={"rows": len(df), "columns": len(df.columns)},
+        summary={
+            "issues_detected": len(diagnostics),
+            "numeric_columns": len(profile["numeric_columns"]) if profile else 0,
+            "categorical_columns": len(profile["categorical_columns"]) if profile else 0,
+            "duplicate_rows": int(profile["duplicates"]["duplicate_count"]) if profile else 0,
+            "missing_columns": len(missing_values),
+            "outlier_columns": sum(entry["outlier_count"] > 0 for entry in outlier_results),
+        },
+        parsing_options=ParsingOptions(**(parsing_options or {})),
+        missing_values=missing_values,
+        outliers=outlier_results,
+        validation=validation,
+        diagnostics=diagnostics,
+        findings=findings,
     )
 
 
@@ -184,19 +258,20 @@ class AnalysisService:
         records only validation findings (severity ``error``) and completes
         without running downstream diagnostics. Otherwise validation warnings,
         per-column profile summaries (severity ``info``), missing values,
-        duplicates and IQR outliers are recorded.
+        duplicates and IQR outliers are recorded. Each diagnostic runs once.
 
         Finding values are percentages on a 0-100 scale, except profile
         findings, whose value is the column's unique-value count. The caller
         supplies the corresponding DataFrame because raw dataset rows are not
-        stored, and may pass the CSV ``parsing_options`` used to load it so the
+        stored, and may pass the ``parsing_options`` used to load it so the
         report records them. A run is recorded before computation begins. All
         findings, the report snapshot and the completed status commit
         together; failure leaves a failed run without partial findings or a
         report and re-raises the original error.
         """
         with session_scope(self.engine) as session:
-            if repository.get_dataset(session, dataset_id) is None:
+            dataset = repository.get_dataset(session, dataset_id)
+            if dataset is None:
                 raise ValueError(f"Dataset {dataset_id} does not exist")
             analysis = repository.create_analysis(session, dataset_id)
         analysis_id = analysis.id
@@ -205,19 +280,19 @@ class AnalysisService:
             validation = validate_dataset(df)
             results = _validation_results(validation)
             profile = None
+            outliers = []
 
             if validation["valid"]:
                 total_rows = len(df)
                 profile = profile_dataset(df)
+                outliers = detect_numeric_outliers(df)
                 results.extend(_profile_results(profile))
                 results.extend(
                     _missing_value_result(row, total_rows)
                     for row in profile["missing_values"]
                 )
                 results.append(_duplicate_result(profile["duplicates"], total_rows))
-                results.extend(
-                    _outlier_result(raw) for raw in detect_numeric_outliers(df)
-                )
+                results.extend(_outlier_result(raw) for raw in outliers)
 
             with session_scope(self.engine) as session:
                 for result in results:
@@ -231,22 +306,18 @@ class AnalysisService:
                         message=result.message,
                     )
                 analysis = repository.finish_analysis(session, analysis_id)
-                report = AnalysisReport.build(
-                    dataset_id=dataset_id,
-                    analysis_id=analysis_id,
-                    status=analysis.status,
-                    started_at=analysis.started_at,
-                    completed_at=analysis.completed_at,
-                    valid=validation["valid"],
-                    parsing_options=parsing_options or {},
-                    profile=_dataset_profile(df, profile),
+                report = _build_report(
+                    dataset=dataset,
+                    analysis=analysis,
+                    df=df,
+                    validation=validation,
+                    profile=profile,
+                    outliers=outliers,
+                    parsing_options=parsing_options,
                     findings=results,
                 )
-                repository.save_report(
-                    session,
-                    analysis_id,
-                    schema_version=REPORT_SCHEMA_VERSION,
-                    report_json=report.to_json(),
+                repository.save_analysis_report(
+                    session, analysis_id, report.model_dump(mode="json")
                 )
         except Exception:
             with session_scope(self.engine) as session:
@@ -255,13 +326,10 @@ class AnalysisService:
 
         return analysis
 
-    def get_report(self, analysis_id: int) -> Optional[AnalysisReport]:
+    def get_report(self, analysis_id: int) -> Optional[dict]:
         """Return the saved report snapshot, or None if the run has none."""
         with session_scope(self.engine) as session:
-            record = repository.get_report(session, analysis_id)
-            if record is None:
-                return None
-            return AnalysisReport.model_validate_json(record.report_json)
+            return repository.get_analysis_report(session, analysis_id)
 
     def list_findings(self, analysis_id: int) -> list[DiagnosticResult]:
         """Return an analysis's saved findings in the order they were recorded."""

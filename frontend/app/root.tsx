@@ -5,10 +5,12 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  Link,
 } from "react-router";
 
 import type { Route } from "./+types/root";
 import "./app.css";
+import { AppShell } from "./components/app-shell";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -42,12 +44,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  return <AppShell><Outlet /></AppShell>;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "Oops!";
-  let details = "An unexpected error occurred.";
+  let message = "Unable to open this page";
+  let details = "Please try again or return to the upload screen.";
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
@@ -62,9 +64,10 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
 
   return (
-    <main className="pt-16 p-4 container mx-auto">
+    <main className="standalone-error panel">
       <h1>{message}</h1>
       <p>{details}</p>
+      <Link className="button button-primary" to="/">Upload a dataset</Link>
       {stack && (
         <pre className="w-full p-4 overflow-x-auto">
           <code>{stack}</code>

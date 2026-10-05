@@ -5,9 +5,10 @@ persistence, so future statistical and fairness checks (KS tests, ANOVA,
 regression, fairness metrics) plug into the same shape as the existing
 missing-value and duplicate checks. ``AnalysisReport`` is the complete,
 JSON-safe snapshot shared by the service, the API and saved-report retrieval.
+Its top-level fields are the contract the frontend reads; ``schema_version``,
+``dataset_id`` and ``findings`` are additive.
 """
 
-from datetime import datetime
 from math import isfinite
 from typing import Any, Optional
 
@@ -30,7 +31,16 @@ def finite_or_none(value: Any) -> Any:
     return value
 
 
-class DiagnosticResult(BaseModel):
+class _FiniteModel(BaseModel):
+    """Base model whose fields never hold NaN or infinity (they become null)."""
+
+    @field_validator("*")
+    @classmethod
+    def _finite(cls, value):
+        return finite_or_none(value)
+
+
+class DiagnosticResult(_FiniteModel):
     """One finding.
 
     ``value`` units depend on ``diagnostic``: missing_values, duplicates and
@@ -50,93 +60,78 @@ class DiagnosticResult(BaseModel):
     recommendation: Optional[str] = None
     metadata: Optional[dict[str, Any]] = None
 
-    @field_validator("value")
-    @classmethod
-    def _value_is_finite(cls, value):
-        return finite_or_none(value)
-
-    @field_validator("metadata")
-    @classmethod
-    def _metadata_is_finite(cls, metadata):
-        return finite_or_none(metadata)
-
     @property
     def is_issue(self) -> bool:
         return self.severity not in NON_ISSUE_SEVERITIES
 
 
-class DatasetProfile(BaseModel):
+class ParsingOptions(BaseModel):
+    delimiter: str = ","
+    has_header: bool = True
+    missing_values: list[str] = Field(default_factory=list)
+
+
+class ReportDataset(BaseModel):
     rows: int
     columns: int
-    numeric_columns: list[str] = Field(default_factory=list)
-    categorical_columns: list[str] = Field(default_factory=list)
-    column_details: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ReportSummary(BaseModel):
-    """Issue counts. Informational findings are not counted."""
-
     issues_detected: int = 0
-    issues_by_severity: dict[str, int] = Field(default_factory=dict)
-    issues_by_diagnostic: dict[str, int] = Field(default_factory=dict)
+    numeric_columns: int = 0
+    categorical_columns: int = 0
+    duplicate_rows: int = 0
+    missing_columns: int = 0
+    outlier_columns: int = 0
 
 
-class AnalysisReport(BaseModel):
+class MissingValueResult(_FiniteModel):
+    column_name: str
+    missing_count: int
+    missing_percentage: Optional[float] = None
+    severity: str
+
+
+class OutlierResult(_FiniteModel):
+    column_name: str
+    outlier_count: int
+    outlier_percentage: Optional[float] = None
+    q1: Optional[float] = None
+    q3: Optional[float] = None
+    iqr: Optional[float] = None
+    lower_bound: Optional[float] = None
+    upper_bound: Optional[float] = None
+
+
+class ValidationResult(BaseModel):
+    valid: bool
+    rows: int = 0
+    columns: int = 0
+    errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class AnalysisReport(_FiniteModel):
     """Complete saved snapshot of one analysis run.
 
-    ``profile`` is empty (no columns listed) when structural validation
-    failed, in which case ``findings`` holds only validation findings.
-    Datetimes are naive UTC.
+    When structural validation fails, ``missing_values``, ``outliers`` and
+    ``findings`` hold only what could be computed (validation findings) and
+    the column counts in ``summary`` are zero. Timestamps are UTC ISO-8601
+    strings ending in ``Z``.
     """
 
     schema_version: int = REPORT_SCHEMA_VERSION
     dataset_id: int
     analysis_id: int
+    filename: str
     status: str
-    started_at: datetime
-    completed_at: Optional[datetime] = None
-    valid: bool
-    parsing_options: dict[str, Any] = Field(default_factory=dict)
-    profile: DatasetProfile
+    started_at: str
+    completed_at: Optional[str] = None
+    dataset: ReportDataset
     summary: ReportSummary
+    parsing_options: ParsingOptions
+    missing_values: list[MissingValueResult]
+    outliers: list[OutlierResult]
+    validation: ValidationResult
+    diagnostics: list[dict[str, Any]]
     findings: list[DiagnosticResult]
-
-    @classmethod
-    def build(
-        cls,
-        *,
-        dataset_id: int,
-        analysis_id: int,
-        status: str,
-        started_at: datetime,
-        completed_at: Optional[datetime],
-        valid: bool,
-        parsing_options: dict[str, Any],
-        profile: DatasetProfile,
-        findings: list[DiagnosticResult],
-    ) -> "AnalysisReport":
-        issues = [finding for finding in findings if finding.is_issue]
-        summary = ReportSummary(issues_detected=len(issues))
-        for finding in issues:
-            summary.issues_by_severity[finding.severity] = (
-                summary.issues_by_severity.get(finding.severity, 0) + 1
-            )
-            summary.issues_by_diagnostic[finding.diagnostic] = (
-                summary.issues_by_diagnostic.get(finding.diagnostic, 0) + 1
-            )
-        return cls(
-            dataset_id=dataset_id,
-            analysis_id=analysis_id,
-            status=status,
-            started_at=started_at,
-            completed_at=completed_at,
-            valid=valid,
-            parsing_options=finite_or_none(parsing_options),
-            profile=profile,
-            summary=summary,
-            findings=findings,
-        )
-
-    def to_json(self) -> str:
-        """Serialize as strict JSON (non-finite numbers are already null)."""
-        return self.model_dump_json()

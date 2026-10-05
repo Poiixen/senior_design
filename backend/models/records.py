@@ -6,7 +6,7 @@ Timestamps are naive UTC datetimes, matching SQLite's DateTime storage.
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Integer, Text
+from sqlalchemy import JSON, CheckConstraint, DateTime, Float, ForeignKey, Integer, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -63,11 +63,11 @@ class DiagnosticResult(Base):
     message: Mapped[str] = mapped_column(Text)
 
 
-class ReportRecord(Base):
-    """Versioned JSON snapshot of a completed analysis (one per analysis).
+class AnalysisReport(Base):
+    """A complete, JSON-safe report snapshot; no individual dataset rows.
 
-    A separate table keeps the upgrade additive: ``create_all`` adds it to
-    an existing database without altering or losing existing records.
+    A separate table allows existing metadata databases to gain report storage
+    through create_all without altering their existing columns.
     """
 
     __tablename__ = "analysis_reports"
@@ -75,6 +75,4 @@ class ReportRecord(Base):
     analysis_id: Mapped[int] = mapped_column(
         ForeignKey("analyses.id"), primary_key=True
     )
-    schema_version: Mapped[int] = mapped_column(Integer)
-    report_json: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    report: Mapped[dict] = mapped_column(JSON)
