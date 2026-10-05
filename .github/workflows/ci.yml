@@ -1,0 +1,71 @@
+name: CI
+
+# Ticket #30: run the repository's existing automated checks on every pull
+# request so backend and frontend changes both get feedback before merge.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A new push to the same branch supersedes an in-flight run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    env:
+      # The API builds its SQLite engine at import time from DATABASE_PATH.
+      # Point it outside the checkout so importing the app during collection
+      # cannot write a database into the working tree.
+      DATABASE_PATH: ${{ runner.temp }}/ci-analysis.sqlite3
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Record installed versions
+        run: pip list
+
+      # Deselects the `integration` marker, which is the suite that reads the
+      # real UCI Adult files. See README for running those locally.
+      - name: Run tests
+        run: pytest -m "not integration"
+
+  frontend:
+    name: Frontend typecheck and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build

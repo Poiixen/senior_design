@@ -107,6 +107,34 @@ Tests marked `integration` use the real Adult files and skip when `data/raw/`
 is absent. Everything else uses fixtures from [test/conftest.py](test/conftest.py),
 supplied by naming one as an argument:
 
+### Continuous integration
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every pull request
+and on pushes to `main`, as two independent jobs:
+
+| Job | Runs |
+| --- | --- |
+| Backend tests | `pip install -r backend/requirements.txt`, then `pytest -m "not integration"` |
+| Frontend typecheck and build | `npm ci`, `npm run typecheck`, `npm run build` |
+
+Both must pass before merge. A failing job marks the check failed on the pull
+request and names the failing step.
+
+CI deselects the `integration` marker, so the real Adult-dataset tests are
+**optional** and never gate a merge. Run them yourself with:
+
+```bash
+python -m pytest -m integration
+```
+
+They need `data/raw/UCI_ADULT_INCOME/` on disk, and skip rather than fail when
+it is absent.
+
+Database tests stay isolated from the checkout: `test_database.py` and
+`test_analysis_service.py` build each engine under pytest's `tmp_path`, and CI
+sets `DATABASE_PATH` to a path in the runner's temp directory so importing the
+API cannot create a database inside the working tree.
+
 ```python
 def test_something(simple_clean_df):
     assert profile_dataset(simple_clean_df)["rows"] == 6
