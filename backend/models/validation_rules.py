@@ -1,6 +1,3 @@
-
-"""Versioned rules describing expected dataset columns and values."""
-
 import json
 import math
 from pathlib import Path

@@ -1,10 +1,3 @@
-"""Integration tests: real UCI Adult data through the full pipeline.
-
-Every diagnostic is exercised end to end against data/raw, so these
-catch regressions the synthetic unit tests cannot. Skipped when the
-raw dataset is not checked out.
-"""
-
 import pandas as pd
 import pytest
 
