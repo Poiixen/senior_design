@@ -246,6 +246,51 @@ def test_something(simple_clean_df):
 Sizes are pinned to thresholds in the code under test: 100 rows so percentages
 land exactly on the severity bands, 8 rows so 2 duplicates is exactly 25%.
 
+### API-to-database tests
+
+[test/test_api_persistence.py](test/test_api_persistence.py) covers the path
+that the endpoint tests and the service tests each only half cover: that one
+upload produces findings in the response, the same findings in the database,
+and a retrievable report identical to the response.
+
+The API builds its SQLite engine at import time from `DATABASE_PATH`,
+defaulting to `data/analysis.sqlite3` inside the repository. To keep test runs
+out of the working tree, [test/conftest.py](test/conftest.py) points
+`DATABASE_PATH` at a temporary directory before any test module imports the
+app, and removes it at exit. An explicit `DATABASE_PATH` still wins, so CI can
+set its own. One consequence worth knowing: the engine is a module-level
+global, so API tests share a single database for the run rather than getting a
+fresh one per test. Assertions are written to not depend on the table being
+empty.
+
+### Browser smoke test
+
+The automated tests stop at the API. Run this by hand after changing the
+upload form, the report page, or the report schema. Start both services with
+`bash run-all.sh` (or `.\run-all.ps1`), then:
+
+1. **Upload.** Open <http://127.0.0.1:5173>, choose a CSV with a known problem
+   in it, and submit. `test/` has none on disk; the 20-row fixture at the top
+   of [test/test_api_persistence.py](test/test_api_persistence.py) is a good
+   one to paste into a file, since its findings are known exactly.
+2. **Report display.** The report page should show the row and column counts,
+   a missing-values row for `reading` at 10% (severity moderate), one `score`
+   outlier, and 2 duplicate rows. An all-missing numeric column shows blank
+   quartile bounds rather than `NaN`.
+3. **Refresh.** Reload the page. The report is re-fetched from the database by
+   its ID, so the same numbers must come back and the URL must stay on
+   `/reports/<id>`. Losing the report on refresh means the page is rendering
+   from in-memory state instead of the stored report.
+4. **Direct navigation.** Paste the same `/reports/<id>` URL into a new tab.
+   It should render the same report with no upload step.
+5. **History.** Visit `/reports`. The upload should be listed newest first,
+   with its filename, row and column counts, and a Completed badge.
+6. **Unknown ID.** Visit `/reports/999999999`. The page should report that the
+   report was not found, not crash or hang.
+
+`/reports/sample` renders a built-in example and needs no backend, so it
+isolates frontend rendering problems from API problems.
+
 ## Structure
 
 ```

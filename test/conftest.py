@@ -5,12 +5,26 @@ unit tests can assert exact values. Adult fixtures are for integration
 tests only and skip when the raw data is not checked out.
 """
 
+import atexit
 import os
+import shutil
+import tempfile
 
 import pandas as pd
 import pytest
 
-from backend.ingestion.adult_adapter import load_adult
+# backend.api.main builds its SQLite engine at import time from DATABASE_PATH,
+# defaulting to data/analysis.sqlite3 inside the repository. Point it at a
+# throwaway directory before any test module imports the app, so running the
+# suite never creates or mutates a database in the working tree. setdefault
+# keeps an explicit DATABASE_PATH (CI sets one) authoritative.
+_API_DATABASE_DIR = tempfile.mkdtemp(prefix="team-science-test-db-")
+os.environ.setdefault(
+    "DATABASE_PATH", os.path.join(_API_DATABASE_DIR, "analysis.sqlite3")
+)
+atexit.register(shutil.rmtree, _API_DATABASE_DIR, ignore_errors=True)
+
+from backend.ingestion.adult_adapter import load_adult  # noqa: E402
 
 DATA_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "data", "raw", "UCI_ADULT_INCOME")
