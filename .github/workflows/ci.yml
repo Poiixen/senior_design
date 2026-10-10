@@ -19,11 +19,6 @@ jobs:
   backend:
     name: Backend tests
     runs-on: ubuntu-latest
-    env:
-      # API tests attach a per-test database through conftest. This is the
-      # fallback DATABASE_PATH for an app started without one, kept outside
-      # the checkout so tests can never write a database into the working tree.
-      DATABASE_PATH: ${{ runner.temp }}/ci-analysis.sqlite3
     steps:
       - uses: actions/checkout@v4
 
@@ -44,6 +39,13 @@ jobs:
       # Deselects the `integration` marker, which is the suite that reads the
       # real UCI Adult files. See README for running those locally.
       - name: Run tests
+        # API tests attach a per-test database through conftest. This is the
+        # fallback DATABASE_PATH for an app started without one, kept outside
+        # the checkout so tests can never write a database into the working
+        # tree. It is set on the step because the runner context is not
+        # available in job-level env.
+        env:
+          DATABASE_PATH: ${{ runner.temp }}/ci-analysis.sqlite3
         run: pytest -m "not integration"
 
   frontend:
