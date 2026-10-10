@@ -6,22 +6,18 @@ join the two, asserting that a single upload produces findings in the
 response, the same findings in the database, and a retrievable report that
 matches the response byte for byte.
 
-The database is the throwaway SQLite file that conftest points DATABASE_PATH
-at, so nothing here touches the repository's data/ directory.
+Each test gets its own temporary SQLite database from conftest's api_engine
+fixture, so nothing here touches the repository's data/ directory and no test
+sees another test's rows.
 """
 
 import json
 
-from fastapi.testclient import TestClient
 from sqlalchemy import select, text
 
-from backend.api.main import app, engine
 from backend.database.connection import session_scope
 from backend.database.repository import list_diagnostic_results
 from backend.models import Analysis, AnalysisReport
-
-client = TestClient(app)
-
 
 # 20 rows with hand-checked diagnostics:
 #   - "reading" is missing twice (10%, severity "moderate")
@@ -52,7 +48,7 @@ MIXED_FINDINGS_CSV = (
 )
 
 
-def upload(csv_content: str, filename: str = "fixture.csv", **form):
+def upload(client, csv_content: str, filename: str = "fixture.csv", **form):
     return client.post(
         "/api/analyze",
         files={"file": (filename, csv_content, "text/csv")},
@@ -60,19 +56,19 @@ def upload(csv_content: str, filename: str = "fixture.csv", **form):
     )
 
 
-def latest_analysis_id() -> int | None:
+def latest_analysis_id(engine) -> int | None:
     """The highest analysis ID, including runs that failed."""
     with session_scope(engine) as session:
         return session.scalar(select(Analysis.id).order_by(Analysis.id.desc()).limit(1))
 
 
-def stored_report(analysis_id: int) -> dict | None:
+def stored_report(engine, analysis_id: int) -> dict | None:
     with session_scope(engine) as session:
         record = session.get(AnalysisReport, analysis_id)
         return record.report if record is not None else None
 
 
-def stored_report_text(analysis_id: int) -> str:
+def stored_report_text(engine, analysis_id: int) -> str:
     """The report column exactly as written, before any JSON decoding."""
     with engine.connect() as connection:
         return connection.execute(
@@ -97,9 +93,9 @@ def assert_strict_json(raw: str) -> None:
 # --- Findings in the response -----------------------------------------
 
 
-def test_upload_reports_missing_values_duplicates_and_outlier():
+def test_upload_reports_missing_values_duplicates_and_outlier(client):
     """The three finding types land in the response with exact values."""
-    response = upload(MIXED_FINDINGS_CSV)
+    response = upload(client, MIXED_FINDINGS_CSV)
 
     assert response.status_code == 200
     body = response.json()
@@ -141,9 +137,9 @@ def test_upload_reports_missing_values_duplicates_and_outlier():
 # --- Response matches what was saved ----------------------------------
 
 
-def test_saved_report_matches_the_response_it_came_from():
+def test_saved_report_matches_the_response_it_came_from(client, api_engine):
     """Re-reading the report returns exactly the uploaded response."""
-    body = upload(MIXED_FINDINGS_CSV).json()
+    body = upload(client, MIXED_FINDINGS_CSV).json()
     analysis_id = body["analysis_id"]
 
     retrieved = client.get(f"/api/reports/{analysis_id}")
@@ -151,15 +147,15 @@ def test_saved_report_matches_the_response_it_came_from():
     assert retrieved.json() == body
 
     # Served from the database, not from a cache in the request path.
-    assert stored_report(analysis_id) == body
+    assert stored_report(api_engine, analysis_id) == body
 
 
-def test_saved_findings_match_the_reported_findings():
+def test_saved_findings_match_the_reported_findings(client, api_engine):
     """The diagnostic rows written by the service agree with the response."""
-    body = upload(MIXED_FINDINGS_CSV).json()
+    body = upload(client, MIXED_FINDINGS_CSV).json()
     analysis_id = body["analysis_id"]
 
-    with session_scope(engine) as session:
+    with session_scope(api_engine) as session:
         saved = list_diagnostic_results(session, analysis_id)
 
     missing = [r for r in saved if r.diagnostic_type == "missing_values"]
@@ -174,10 +170,10 @@ def test_saved_findings_match_the_reported_findings():
     assert duplicates[0].severity == "warning"
 
 
-def test_each_upload_is_persisted_as_a_separate_report():
+def test_each_upload_is_persisted_as_a_separate_report(client):
     """Two uploads keep independent IDs, findings and report snapshots."""
-    first = upload(MIXED_FINDINGS_CSV, filename="first.csv").json()
-    second = upload(MIXED_FINDINGS_CSV, filename="second.csv").json()
+    first = upload(client, MIXED_FINDINGS_CSV, filename="first.csv").json()
+    second = upload(client, MIXED_FINDINGS_CSV, filename="second.csv").json()
 
     assert first["analysis_id"] != second["analysis_id"]
     assert first["filename"] == "first.csv"
@@ -190,7 +186,7 @@ def test_each_upload_is_persisted_as_a_separate_report():
 # --- Failure leaves nothing behind ------------------------------------
 
 
-def test_detector_failure_leaves_no_findings_and_no_report(monkeypatch):
+def test_detector_failure_leaves_no_findings_and_no_report(client, api_engine, monkeypatch):
     """A failed run is recorded as failed, with no findings and no report."""
     def explode(df):
         raise RuntimeError("detector failed")
@@ -199,27 +195,27 @@ def test_detector_failure_leaves_no_findings_and_no_report(monkeypatch):
         "backend.services.analysis_service.detect_duplicates", explode
     )
 
-    before = latest_analysis_id()
-    response = upload(MIXED_FINDINGS_CSV, filename="broken.csv")
+    before = latest_analysis_id(api_engine)
+    response = upload(client, MIXED_FINDINGS_CSV, filename="broken.csv")
 
     assert response.status_code == 500
     # The generic handler must not leak the underlying exception.
     assert "detector failed" not in response.text
 
-    analysis_id = latest_analysis_id()
+    analysis_id = latest_analysis_id(api_engine)
     assert analysis_id is not None and analysis_id != before
 
-    with session_scope(engine) as session:
+    with session_scope(api_engine) as session:
         analysis = session.get(Analysis, analysis_id)
         assert analysis.status == "failed"
         assert analysis.completed_at is not None
         assert list_diagnostic_results(session, analysis_id) == []
 
-    assert stored_report(analysis_id) is None
+    assert stored_report(api_engine, analysis_id) is None
     assert client.get(f"/api/reports/{analysis_id}").status_code == 404
 
 
-def test_partial_write_failure_rolls_back_every_finding(monkeypatch):
+def test_partial_write_failure_rolls_back_every_finding(client, api_engine, monkeypatch):
     """Failing midway through the inserts leaves no partial findings."""
     import backend.services.analysis_service as service
 
@@ -236,42 +232,42 @@ def test_partial_write_failure_rolls_back_every_finding(monkeypatch):
         service.repository, "save_diagnostic_result", fail_on_second
     )
 
-    before = latest_analysis_id()
-    response = upload(MIXED_FINDINGS_CSV, filename="partial.csv")
+    before = latest_analysis_id(api_engine)
+    response = upload(client, MIXED_FINDINGS_CSV, filename="partial.csv")
 
     assert response.status_code == 500
     assert calls["n"] >= 2, "the second insert should have been reached"
 
-    analysis_id = latest_analysis_id()
+    analysis_id = latest_analysis_id(api_engine)
     assert analysis_id is not None and analysis_id != before
 
-    with session_scope(engine) as session:
+    with session_scope(api_engine) as session:
         analysis = session.get(Analysis, analysis_id)
         assert analysis.status == "failed"
         # The first insert succeeded before the second raised; the
         # transaction must have discarded it.
         assert list_diagnostic_results(session, analysis_id) == []
 
-    assert stored_report(analysis_id) is None
+    assert stored_report(api_engine, analysis_id) is None
     assert client.get(f"/api/reports/{analysis_id}").status_code == 404
 
 
-def test_rejected_upload_creates_no_analysis_at_all():
+def test_rejected_upload_creates_no_analysis_at_all(client, api_engine):
     """Input rejected before analysis starts leaves the database untouched."""
-    before = latest_analysis_id()
+    before = latest_analysis_id(api_engine)
 
-    assert upload("", filename="empty.csv").status_code == 400
-    assert upload("a,b\n1,2\n", filename="notes.txt").status_code == 400
+    assert upload(client, "", filename="empty.csv").status_code == 400
+    assert upload(client, "a,b\n1,2\n", filename="notes.txt").status_code == 400
 
-    assert latest_analysis_id() == before
+    assert latest_analysis_id(api_engine) == before
 
 
 # --- Edge-case inputs --------------------------------------------------
 
 
-def test_warning_only_input_is_analyzed_and_persisted():
+def test_warning_only_input_is_analyzed_and_persisted(client):
     """Warnings do not block analysis, and they survive the round trip."""
-    body = upload("a,b\n1,p\n2,q\n3,r\n", filename="small.csv").json()
+    body = upload(client, "a,b\n1,p\n2,q\n3,r\n", filename="small.csv").json()
 
     assert body["status"] == "completed"
     assert body["validation"]["valid"] is True
@@ -292,9 +288,9 @@ def test_warning_only_input_is_analyzed_and_persisted():
     assert client.get(f"/api/reports/{body['analysis_id']}").json() == body
 
 
-def test_all_missing_numeric_column_serializes_and_persists():
+def test_all_missing_numeric_column_serializes_and_persists(client, api_engine):
     """An all-NaN numeric column yields JSON nulls, not NaN, and round trips."""
-    body = upload(
+    body = upload(client, 
         "label,measure\nr1,\nr2,\nr3,\nr4,\nr5,\n", filename="empty-column.csv"
     ).json()
 
@@ -322,7 +318,7 @@ def test_all_missing_numeric_column_serializes_and_persists():
     # renders a float NaN as null on its way out regardless. The stored column
     # is where an unguarded NaN actually survives, as a bare literal that is
     # not valid JSON, so assert on the raw text that was written.
-    assert_strict_json(stored_report_text(body["analysis_id"]))
+    assert_strict_json(stored_report_text(api_engine, body["analysis_id"]))
 
     retrieved = client.get(f"/api/reports/{body['analysis_id']}")
     assert retrieved.json() == body
@@ -331,9 +327,9 @@ def test_all_missing_numeric_column_serializes_and_persists():
 # --- Listing -----------------------------------------------------------
 
 
-def test_report_listing_summarizes_without_the_full_payload():
+def test_report_listing_summarizes_without_the_full_payload(client):
     """The index carries summary fields only, newest first."""
-    body = upload(MIXED_FINDINGS_CSV, filename="listed.csv").json()
+    body = upload(client, MIXED_FINDINGS_CSV, filename="listed.csv").json()
 
     listing = client.get("/api/reports")
     assert listing.status_code == 200

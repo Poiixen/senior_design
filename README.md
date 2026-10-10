@@ -253,15 +253,13 @@ that the endpoint tests and the service tests each only half cover: that one
 upload produces findings in the response, the same findings in the database,
 and a retrievable report identical to the response.
 
-The API builds its SQLite engine at import time from `DATABASE_PATH`,
-defaulting to `data/analysis.sqlite3` inside the repository. To keep test runs
-out of the working tree, [test/conftest.py](test/conftest.py) points
-`DATABASE_PATH` at a temporary directory before any test module imports the
-app, and removes it at exit. An explicit `DATABASE_PATH` still wins, so CI can
-set its own. One consequence worth knowing: the engine is a module-level
-global, so API tests share a single database for the run rather than getting a
-fresh one per test. Assertions are written to not depend on the table being
-empty.
+Importing the API opens no database. On startup the server calls
+`configure_database(app, path)` with `DATABASE_PATH`, defaulting to
+`data/analysis.sqlite3` inside the repository. Tests call the same function
+through the `api_engine` and `client` fixtures in
+[test/conftest.py](test/conftest.py), so each API test gets a fresh SQLite
+file under pytest's `tmp_path` and never touches the working tree or another
+test's rows.
 
 ### Browser smoke test
 
@@ -275,8 +273,8 @@ upload form, the report page, or the report schema. Start both services with
    one to paste into a file, since its findings are known exactly.
 2. **Report display.** The report page should show the row and column counts,
    a missing-values row for `reading` at 10% (severity moderate), one `score`
-   outlier, and 2 duplicate rows. An all-missing numeric column shows blank
-   quartile bounds rather than `NaN`.
+   outlier, and 2 duplicate rows. An all-missing numeric column shows
+   "Unavailable" for its quartile bounds rather than `NaN`.
 3. **Refresh.** Reload the page. The report is re-fetched from the database by
    its ID, so the same numbers must come back and the URL must stay on
    `/reports/<id>`. Losing the report on refresh means the page is rendering

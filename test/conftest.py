@@ -5,32 +5,39 @@ unit tests can assert exact values. Adult fixtures are for integration
 tests only and skip when the raw data is not checked out.
 """
 
-import atexit
 import os
-import shutil
-import tempfile
 
 import pandas as pd
 import pytest
+from fastapi.testclient import TestClient
 
-# backend.api.main builds its SQLite engine at import time from DATABASE_PATH,
-# defaulting to data/analysis.sqlite3 inside the repository. Point it at a
-# throwaway directory before any test module imports the app, so running the
-# suite never creates or mutates a database in the working tree. setdefault
-# keeps an explicit DATABASE_PATH (CI sets one) authoritative.
-_API_DATABASE_DIR = tempfile.mkdtemp(prefix="team-science-test-db-")
-os.environ.setdefault(
-    "DATABASE_PATH", os.path.join(_API_DATABASE_DIR, "analysis.sqlite3")
-)
-atexit.register(shutil.rmtree, _API_DATABASE_DIR, ignore_errors=True)
-
-from backend.ingestion.adult_adapter import load_adult  # noqa: E402
+from backend.api.main import app, configure_database
+from backend.ingestion.adult_adapter import load_adult
 
 DATA_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "data", "raw", "UCI_ADULT_INCOME")
 )
 ADULT_TRAIN_PATH = os.path.join(DATA_DIR, "adult.data")
 ADULT_TEST_PATH = os.path.join(DATA_DIR, "adult.test")
+
+
+# --- API fixtures -----------------------------------------------------
+
+
+@pytest.fixture
+def api_engine(tmp_path):
+    """A fresh SQLite database attached to the app for one test."""
+    engine = configure_database(app, tmp_path / "analysis.sqlite3")
+    yield engine
+    engine.dispose()
+    app.state.engine = None
+    app.state.analysis_service = None
+
+
+@pytest.fixture
+def client(api_engine):
+    """A test client whose requests read and write ``api_engine``."""
+    return TestClient(app)
 
 
 # --- Generic fixtures -------------------------------------------------
