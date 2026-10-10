@@ -1,0 +1,31 @@
+
+{
+  "version": "1.0",
+  "dataset_name": "inventory",
+  "columns": {
+    "product_id": {
+      "type": "integer",
+      "required": true,
+      "nullable": false
+    },
+    "category": {
+      "type": "string",
+      "required": true,
+      "nullable": false,
+      "allowed_values": ["food", "clothing", "electronics"]
+    },
+    "price": {
+      "type": "number",
+      "required": true,
+      "nullable": false,
+      "minimum": 0
+    },
+    "stock": {
+      "type": "integer",
+      "required": false,
+      "nullable": true,
+      "minimum": 0,
+      "maximum": 10000
+    }
+  }
+}

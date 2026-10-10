@@ -1,0 +1,38 @@
+
+{
+  "version": "1.0",
+  "dataset_name": "adult_income",
+  "columns": {
+    "age": {
+      "type": "integer",
+      "required": true,
+      "nullable": false,
+      "minimum": 0,
+      "maximum": 120
+    },
+    "workclass": {
+      "type": "string",
+      "required": true,
+      "nullable": true
+    },
+    "hours_per_week": {
+      "type": "integer",
+      "required": true,
+      "nullable": false,
+      "minimum": 1,
+      "maximum": 99
+    },
+    "capital_gain": {
+      "type": "number",
+      "required": false,
+      "nullable": false,
+      "minimum": 0
+    },
+    "income": {
+      "type": "string",
+      "required": true,
+      "nullable": false,
+      "allowed_values": ["<=50K", ">50K"]
+    }
+  }
+}
