@@ -225,9 +225,10 @@ They need `data/raw/UCI_ADULT_INCOME/` on disk, and skip rather than fail when
 it is absent.
 
 Database tests stay isolated from the checkout: `test_database.py` and
-`test_analysis_service.py` build each engine under pytest's `tmp_path`, and CI
-sets `DATABASE_PATH` to a path in the runner's temp directory so importing the
-API cannot create a database inside the working tree.
+`test_analysis_service.py` build each engine under pytest's `tmp_path`, and the
+API tests get a fresh one per test from the `api_engine` fixture. CI also sets
+`DATABASE_PATH` to the runner's temp directory as a fallback, so an app started
+without that fixture still writes outside the working tree.
 
 ```python
 def test_something(simple_clean_df):

@@ -192,7 +192,7 @@ def test_detector_failure_leaves_no_findings_and_no_report(client, api_engine, m
         raise RuntimeError("detector failed")
 
     monkeypatch.setattr(
-        "backend.services.analysis_service.detect_duplicates", explode
+        "backend.services.analysis_service.profile_dataset", explode
     )
 
     before = latest_analysis_id(api_engine)
@@ -212,7 +212,10 @@ def test_detector_failure_leaves_no_findings_and_no_report(client, api_engine, m
         assert list_diagnostic_results(session, analysis_id) == []
 
     assert stored_report(api_engine, analysis_id) is None
-    assert client.get(f"/api/reports/{analysis_id}").status_code == 404
+    # A failed run is reported as a conflict, not as a missing report.
+    response = client.get(f"/api/reports/{analysis_id}")
+    assert response.status_code == 409
+    assert "failed" in response.json()["detail"]
 
 
 def test_partial_write_failure_rolls_back_every_finding(client, api_engine, monkeypatch):
@@ -249,7 +252,10 @@ def test_partial_write_failure_rolls_back_every_finding(client, api_engine, monk
         assert list_diagnostic_results(session, analysis_id) == []
 
     assert stored_report(api_engine, analysis_id) is None
-    assert client.get(f"/api/reports/{analysis_id}").status_code == 404
+    # A failed run is reported as a conflict, not as a missing report.
+    response = client.get(f"/api/reports/{analysis_id}")
+    assert response.status_code == 409
+    assert "failed" in response.json()["detail"]
 
 
 def test_rejected_upload_creates_no_analysis_at_all(client, api_engine):
