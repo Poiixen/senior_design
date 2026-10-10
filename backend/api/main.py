@@ -1,10 +1,9 @@
 import json
-import math
 import os
 import tempfile
 import traceback
+from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,13 +15,25 @@ from backend.database.connection import (
     initialize_database,
     session_scope,
 )
-from backend.diagnostics.generic_dataset_profiler import profile_dataset
-from backend.diagnostics.iqr_outlier_detection import detect_numeric_outliers
-from backend.diagnostics.validate_dataset import validate_dataset
 from backend.ingestion.csv_loader import CSVLoadError, load_csv
 from backend.services.analysis_service import AnalysisService
 
-app = FastAPI(title="Team Science API")
+
+database_path = os.getenv("DATABASE_PATH", str(DEFAULT_DATABASE_PATH))
+engine = create_sqlite_engine(database_path)
+analysis_service = AnalysisService(engine)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    initialize_database(engine)
+    try:
+        yield
+    finally:
+        engine.dispose()
+
+
+app = FastAPI(title="Team Science API", lifespan=lifespan)
 
 allowed_origins = [
     origin.strip()
@@ -39,11 +50,6 @@ if allowed_origins:
         allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
-
-database_path = os.getenv("DATABASE_PATH", str(DEFAULT_DATABASE_PATH))
-engine = create_sqlite_engine(database_path)
-initialize_database(engine)
-analysis_service = AnalysisService(engine)
 
 # Configuration: Maximum upload size in bytes (100 MB default)
 MAX_UPLOAD_SIZE = int(os.getenv("MAX_UPLOAD_SIZE", 100 * 1024 * 1024))
@@ -105,18 +111,6 @@ def parse_missing_values(raw_value: str) -> list[str]:
     return list(dict.fromkeys(item for item in value if item))
 
 
-def json_measurement(value) -> Optional[float]:
-    """Return a finite JSON number, or null for unavailable measurements."""
-    numeric = float(value)
-    return numeric if math.isfinite(numeric) else None
-
-
-def utc_timestamp(value) -> Optional[str]:
-    if value is None:
-        return None
-    return f"{value.isoformat()}Z"
-
-
 @app.post("/api/analyze")
 async def analyze(
     file: UploadFile = File(...),
@@ -167,28 +161,6 @@ async def analyze(
         # Headerless CSVs receive integer labels from pandas; report fields use strings.
         df.columns = [str(column) for column in df.columns]
 
-        validation = validate_dataset(df)
-        profile = profile_dataset(df)
-        outliers = detect_numeric_outliers(df)
-
-        diagnostics = []
-        diagnostics.extend(
-            {"type": "missing_values", **entry} for entry in profile["missing_values"]
-        )
-        if profile["duplicates"]["duplicate_count"] > 0:
-            diagnostics.append({"type": "duplicates", **profile["duplicates"]})
-        diagnostics.extend(
-            {"type": "outlier", **entry} for entry in outliers if entry["outlier_count"] > 0
-        )
-        diagnostics.extend(
-            {"type": "validation", "severity": "warning", "message": warning}
-            for warning in validation["warnings"]
-        )
-        diagnostics.extend(
-            {"type": "validation", "severity": "error", "message": error}
-            for error in validation["errors"]
-        )
-
         filename = Path(file.filename or "dataset.csv").name
         dataset = analysis_service.register_dataset(
             df,
@@ -196,63 +168,16 @@ async def analyze(
             source="upload",
             file_name=filename,
         )
-        analysis = analysis_service.run_analysis(dataset.id, df)
-
-        missing_results = [
-            {
-                "column_name": str(entry["column_name"]),
-                "missing_count": int(entry["missing_count"]),
-                "missing_percentage": json_measurement(entry["missing_percentage"]),
-                "severity": str(entry["severity"]),
-            }
-            for entry in profile["missing_values"]
-        ]
-        outlier_results = [
-            {
-                "column_name": str(entry["column_name"]),
-                "outlier_count": int(entry["outlier_count"]),
-                "outlier_percentage": json_measurement(entry["outlier_percentage"]),
-                "q1": json_measurement(entry["q1"]),
-                "q3": json_measurement(entry["q3"]),
-                "iqr": json_measurement(entry["iqr"]),
-                "lower_bound": json_measurement(entry["lower_bound"]),
-                "upper_bound": json_measurement(entry["upper_bound"]),
-            }
-            for entry in outliers
-        ]
-
-        report = {
-            "analysis_id": analysis.id,
-            "filename": filename,
-            "status": analysis.status,
-            "started_at": utc_timestamp(analysis.started_at),
-            "completed_at": utc_timestamp(analysis.completed_at),
-            "dataset": {"rows": profile["rows"], "columns": profile["columns"]},
-            "summary": {
-                "issues_detected": len(diagnostics),
-                "numeric_columns": len(profile["numeric_columns"]),
-                "categorical_columns": len(profile["categorical_columns"]),
-                "duplicate_rows": int(profile["duplicates"]["duplicate_count"]),
-                "missing_columns": len(missing_results),
-                "outlier_columns": sum(
-                    entry["outlier_count"] > 0 for entry in outlier_results
-                ),
-            },
-            "parsing_options": {
+        analysis = analysis_service.run_analysis(
+            dataset.id,
+            df,
+            parsing_options={
                 "delimiter": delimiter,
                 "has_header": has_header,
                 "missing_values": custom_missing_values,
             },
-            "missing_values": missing_results,
-            "outliers": outlier_results,
-            "validation": validation,
-            "diagnostics": diagnostics,
-        }
-
-        with session_scope(engine) as session:
-            repository.save_analysis_report(session, analysis.id, report)
-
-        return report
+        )
+        return analysis_service.get_report(analysis.id)
 
     except UploadError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message)
@@ -279,9 +204,20 @@ async def analyze(
 def get_report(analysis_id: int) -> dict:
     with session_scope(engine) as session:
         report = repository.get_analysis_report(session, analysis_id)
-    if report is None:
-        raise HTTPException(status_code=404, detail="Analysis report not found.")
-    return report
+        analysis = None if report else repository.get_analysis(session, analysis_id)
+    if report is not None:
+        return report
+    if analysis is not None and analysis.status == "failed":
+        raise HTTPException(
+            status_code=409,
+            detail="This analysis failed, so no report is available.",
+        )
+    if analysis is not None and analysis.status == "running":
+        raise HTTPException(
+            status_code=409,
+            detail="This analysis is still running. Try again shortly.",
+        )
+    raise HTTPException(status_code=404, detail="Analysis report not found.")
 
 
 @app.get("/api/reports")

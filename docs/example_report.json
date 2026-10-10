@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "dataset_id": 1,
+  "analysis_id": 1,
+  "filename": "people.csv",
+  "status": "completed",
+  "started_at": "2026-10-05T06:04:01.871510Z",
+  "completed_at": "2026-10-05T06:04:01.884654Z",
+  "dataset": {
+    "rows": 3,
+    "columns": 2
+  },
+  "summary": {
+    "issues_detected": 3,
+    "numeric_columns": 1,
+    "categorical_columns": 1,
+    "duplicate_rows": 1,
+    "missing_columns": 1,
+    "outlier_columns": 0
+  },
+  "parsing_options": {
+    "delimiter": ",",
+    "has_header": true,
+    "missing_values": []
+  },
+  "missing_values": [
+    {
+      "column_name": "age",
+      "missing_count": 1,
+      "missing_percentage": 33.33333333333333,
+      "severity": "high"
+    }
+  ],
+  "outliers": [
+    {
+      "column_name": "age",
+      "outlier_count": 0,
+      "outlier_percentage": 0.0,
+      "q1": 20.0,
+      "q3": 20.0,
+      "iqr": 0.0,
+      "lower_bound": 20.0,
+      "upper_bound": 20.0
+    }
+  ],
+  "validation": {
+    "valid": true,
+    "rows": 3,
+    "columns": 2,
+    "errors": [],
+    "warnings": [
+      "Dataset is extremely small (fewer than 5 rows)"
+    ]
+  },
+  "diagnostics": [
+    {
+      "type": "missing_values",
+      "column_name": "age",
+      "missing_count": 1,
+      "missing_percentage": 33.33333333333333,
+      "severity": "high"
+    },
+    {
+      "type": "duplicates",
+      "duplicate_count": 1,
+      "duplicate_percentage": 33.33333333333333
+    },
+    {
+      "type": "validation",
+      "severity": "warning",
+      "message": "Dataset is extremely small (fewer than 5 rows)"
+    }
+  ],
+  "findings": [
+    {
+      "diagnostic": "validation",
+      "column": null,
+      "severity": "warning",
+      "value": null,
+      "message": "Dataset is extremely small (fewer than 5 rows)",
+      "recommendation": null,
+      "metadata": null
+    },
+    {
+      "diagnostic": "profile",
+      "column": "name",
+      "severity": "info",
+      "value": 2.0,
+      "message": "Categorical column (object) with 2 unique values.",
+      "recommendation": null,
+      "metadata": {
+        "dtype": "object",
+        "category": "categorical",
+        "unique_values": 2
+      }
+    },
+    {
+      "diagnostic": "profile",
+      "column": "age",
+      "severity": "info",
+      "value": 1.0,
+      "message": "Numeric column (float64) with 1 unique values.",
+      "recommendation": null,
+      "metadata": {
+        "dtype": "float64",
+        "category": "numeric",
+        "unique_values": 1
+      }
+    },
+    {
+      "diagnostic": "missing_values",
+      "column": "age",
+      "severity": "high",
+      "value": 33.33333333333333,
+      "message": "1 of 3 rows have missing values (33.33%).",
+      "recommendation": "Consider imputing or dropping this column.",
+      "metadata": {
+        "missing_count": 1,
+        "total_rows": 3
+      }
+    },
+    {
+      "diagnostic": "duplicates",
+      "column": null,
+      "severity": "warning",
+      "value": 33.33333333333333,
+      "message": "1 of 3 rows are duplicates (33.33%).",
+      "recommendation": "Review and remove duplicate rows if they are unintended.",
+      "metadata": {
+        "duplicate_count": 1,
+        "total_rows": 3
+      }
+    },
+    {
+      "diagnostic": "outliers",
+      "column": "age",
+      "severity": "none",
+      "value": 0.0,
+      "message": "0 values fall outside the IQR bounds [20, 20] (0.00% of non-missing values).",
+      "recommendation": null,
+      "metadata": {
+        "outlier_count": 0,
+        "lower_bound": 20.0,
+        "upper_bound": 20.0
+      }
+    }
+  ]
+}
