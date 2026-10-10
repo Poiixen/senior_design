@@ -225,9 +225,10 @@ They need `data/raw/UCI_ADULT_INCOME/` on disk, and skip rather than fail when
 it is absent.
 
 Database tests stay isolated from the checkout: `test_database.py` and
-`test_analysis_service.py` build each engine under pytest's `tmp_path`, and CI
-sets `DATABASE_PATH` to a path in the runner's temp directory so importing the
-API cannot create a database inside the working tree.
+`test_analysis_service.py` build each engine under pytest's `tmp_path`, and the
+API tests get a fresh one per test from the `api_engine` fixture. CI also sets
+`DATABASE_PATH` to the runner's temp directory as a fallback, so an app started
+without that fixture still writes outside the working tree.
 
 ```python
 def test_something(simple_clean_df):
@@ -245,6 +246,49 @@ def test_something(simple_clean_df):
 
 Sizes are pinned to thresholds in the code under test: 100 rows so percentages
 land exactly on the severity bands, 8 rows so 2 duplicates is exactly 25%.
+
+### API-to-database tests
+
+[test/test_api_persistence.py](test/test_api_persistence.py) covers the path
+that the endpoint tests and the service tests each only half cover: that one
+upload produces findings in the response, the same findings in the database,
+and a retrievable report identical to the response.
+
+Importing the API opens no database. On startup the server calls
+`configure_database(app, path)` with `DATABASE_PATH`, defaulting to
+`data/analysis.sqlite3` inside the repository. Tests call the same function
+through the `api_engine` and `client` fixtures in
+[test/conftest.py](test/conftest.py), so each API test gets a fresh SQLite
+file under pytest's `tmp_path` and never touches the working tree or another
+test's rows.
+
+### Browser smoke test
+
+The automated tests stop at the API. Run this by hand after changing the
+upload form, the report page, or the report schema. Start both services with
+`bash run-all.sh` (or `.\run-all.ps1`), then:
+
+1. **Upload.** Open <http://127.0.0.1:5173>, choose a CSV with a known problem
+   in it, and submit. `test/` has none on disk; the 20-row fixture at the top
+   of [test/test_api_persistence.py](test/test_api_persistence.py) is a good
+   one to paste into a file, since its findings are known exactly.
+2. **Report display.** The report page should show the row and column counts,
+   a missing-values row for `reading` at 10% (severity moderate), one `score`
+   outlier, and 2 duplicate rows. An all-missing numeric column shows
+   "Unavailable" for its quartile bounds rather than `NaN`.
+3. **Refresh.** Reload the page. The report is re-fetched from the database by
+   its ID, so the same numbers must come back and the URL must stay on
+   `/reports/<id>`. Losing the report on refresh means the page is rendering
+   from in-memory state instead of the stored report.
+4. **Direct navigation.** Paste the same `/reports/<id>` URL into a new tab.
+   It should render the same report with no upload step.
+5. **History.** Visit `/reports`. The upload should be listed newest first,
+   with its filename, row and column counts, and a Completed badge.
+6. **Unknown ID.** Visit `/reports/999999999`. The page should report that the
+   report was not found, not crash or hang.
+
+`/reports/sample` renders a built-in example and needs no backend, so it
+isolates frontend rendering problems from API problems.
 
 ## Structure
 

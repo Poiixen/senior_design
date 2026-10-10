@@ -1,25 +1,14 @@
 """Tests for the /api/analyze endpoint."""
 
-import pytest
 from fastapi.testclient import TestClient
 
-from backend.api import main as main_module
 from backend.api.main import app
 from backend.database import repository
 from backend.database.connection import session_scope
 from backend.services import analysis_service as service_module
 
-client = TestClient(app)
 
-
-@pytest.fixture(scope="module", autouse=True)
-def app_lifespan():
-    """Run application startup and shutdown around this module's requests."""
-    with client:
-        yield
-
-
-def test_analyze_returns_expected_shape():
+def test_analyze_returns_expected_shape(client):
     csv_content = (
         "name,age\n"
         "Alice,20\n"
@@ -64,7 +53,7 @@ def test_analyze_returns_expected_shape():
     assert "missing_values" not in listed[0]
 
 
-def test_analyze_reports_missing_values_and_duplicates():
+def test_analyze_reports_missing_values_and_duplicates(client):
     csv_content = (
         "name,age\n"
         "Alice,20\n"
@@ -85,7 +74,7 @@ def test_analyze_reports_missing_values_and_duplicates():
     assert body["summary"]["issues_detected"] == len(body["diagnostics"])
 
 
-def test_analyze_rejects_empty_csv():
+def test_analyze_rejects_empty_csv(client):
     response = client.post(
         "/api/analyze",
         files={"file": ("empty.csv", "", "text/csv")},
@@ -94,7 +83,7 @@ def test_analyze_rejects_empty_csv():
     assert response.status_code == 400
 
 
-def test_analyze_honors_header_delimiter_and_missing_markers():
+def test_analyze_honors_header_delimiter_and_missing_markers(client):
     response = client.post(
         "/api/analyze",
         files={"file": ("data.csv", "Alice;10\n ?;20\n", "text/csv")},
@@ -123,7 +112,7 @@ def test_analyze_honors_header_delimiter_and_missing_markers():
     ]
 
 
-def test_report_lookup_returns_not_found():
+def test_report_lookup_returns_not_found(client):
     response = client.get("/api/reports/999999999")
 
     assert response.status_code == 404
@@ -132,12 +121,12 @@ def test_report_lookup_returns_not_found():
 MIXED_CSV = "name,age\nAlice,20\nBob,\nAlice,20\n"
 
 
-def _post(content=MIXED_CSV):
+def _post(client, content=MIXED_CSV):
     return client.post("/api/analyze", files={"file": ("data.csv", content, "text/csv")})
 
 
-def test_report_adds_versioned_ids_and_findings_to_the_frontend_shape():
-    body = _post().json()
+def test_report_adds_versioned_ids_and_findings_to_the_frontend_shape(client):
+    body = _post(client).json()
 
     assert body["schema_version"] == 1
     assert isinstance(body["dataset_id"], int)
@@ -148,7 +137,7 @@ def test_report_adds_versioned_ids_and_findings_to_the_frontend_shape():
     assert findings[("duplicates", None)]["metadata"]["duplicate_count"] == 1
 
 
-def test_analysis_runs_each_diagnostic_once_per_upload(monkeypatch):
+def test_analysis_runs_each_diagnostic_once_per_upload(client, monkeypatch):
     calls = []
     original = service_module.profile_dataset
 
@@ -158,18 +147,18 @@ def test_analysis_runs_each_diagnostic_once_per_upload(monkeypatch):
 
     monkeypatch.setattr(service_module, "profile_dataset", counted)
 
-    assert _post().status_code == 200
+    assert _post(client).status_code == 200
     assert len(calls) == 1
 
 
-def test_failed_run_has_no_report_and_returns_conflict(monkeypatch):
+def test_failed_run_has_no_report_and_returns_conflict(client, api_engine, monkeypatch):
     def fail(frame):
         raise RuntimeError("Detector failed")
 
     monkeypatch.setattr(service_module, "profile_dataset", fail)
-    assert _post().status_code == 500
+    assert _post(client).status_code == 500
 
-    with session_scope(main_module.engine) as session:
+    with session_scope(api_engine) as session:
         dataset = repository.list_datasets(session)[-1]
         (analysis,) = repository.list_analyses(session, dataset.id)
         assert analysis.status == "failed"
@@ -180,11 +169,11 @@ def test_failed_run_has_no_report_and_returns_conflict(monkeypatch):
     assert "failed" in response.json()["detail"]
 
 
-def test_lifespan_disposes_the_engine_on_shutdown(monkeypatch):
+def test_lifespan_disposes_the_engine_on_shutdown(api_engine, monkeypatch):
     disposed = []
-    original = main_module.engine.dispose
+    original = api_engine.dispose
     monkeypatch.setattr(
-        main_module.engine,
+        api_engine,
         "dispose",
         lambda *a, **k: (disposed.append(True), original(*a, **k)),
     )

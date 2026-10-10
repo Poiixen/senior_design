@@ -20,9 +20,9 @@ jobs:
     name: Backend tests
     runs-on: ubuntu-latest
     env:
-      # The API builds its SQLite engine at import time from DATABASE_PATH.
-      # Point it outside the checkout so importing the app during collection
-      # cannot write a database into the working tree.
+      # API tests attach a per-test database through conftest. This is the
+      # fallback DATABASE_PATH for an app started without one, kept outside
+      # the checkout so tests can never write a database into the working tree.
       DATABASE_PATH: ${{ runner.temp }}/ci-analysis.sqlite3
     steps:
       - uses: actions/checkout@v4
