@@ -9,7 +9,9 @@ import os
 
 import pandas as pd
 import pytest
+from fastapi.testclient import TestClient
 
+from backend.api.main import app, configure_database
 from backend.ingestion.adult_adapter import load_adult
 
 DATA_DIR = os.path.abspath(
@@ -17,6 +19,25 @@ DATA_DIR = os.path.abspath(
 )
 ADULT_TRAIN_PATH = os.path.join(DATA_DIR, "adult.data")
 ADULT_TEST_PATH = os.path.join(DATA_DIR, "adult.test")
+
+
+# --- API fixtures -----------------------------------------------------
+
+
+@pytest.fixture
+def api_engine(tmp_path):
+    """A fresh SQLite database attached to the app for one test."""
+    engine = configure_database(app, tmp_path / "analysis.sqlite3")
+    yield engine
+    engine.dispose()
+    app.state.engine = None
+    app.state.analysis_service = None
+
+
+@pytest.fixture
+def client(api_engine):
+    """A test client whose requests read and write ``api_engine``."""
+    return TestClient(app)
 
 
 # --- Generic fixtures -------------------------------------------------

@@ -4,9 +4,11 @@ import tempfile
 import traceback
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Optional, Union
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.engine import Engine
 
 from backend.database import repository
 from backend.database.connection import (
@@ -19,18 +21,33 @@ from backend.ingestion.csv_loader import CSVLoadError, load_csv
 from backend.services.analysis_service import AnalysisService
 
 
-database_path = os.getenv("DATABASE_PATH", str(DEFAULT_DATABASE_PATH))
-engine = create_sqlite_engine(database_path)
-analysis_service = AnalysisService(engine)
+def configure_database(
+    app: FastAPI, database_path: Union[str, Path] = DEFAULT_DATABASE_PATH
+) -> Engine:
+    """Open the SQLite database at ``database_path`` and attach it to ``app``.
+
+    Nothing touches a database at import time; the server calls this on
+    startup and tests call it with a temporary path. Dispose the returned
+    engine when finished.
+    """
+    engine = create_sqlite_engine(database_path)
+    initialize_database(engine)
+    app.state.engine = engine
+    app.state.analysis_service = AnalysisService(engine)
+    return engine
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
-    initialize_database(engine)
+async def lifespan(app: FastAPI):
+    # Keep a database a caller already configured (tests do this).
+    if getattr(app.state, "engine", None) is None:
+        configure_database(
+            app, os.getenv("DATABASE_PATH", str(DEFAULT_DATABASE_PATH))
+        )
     try:
         yield
     finally:
-        engine.dispose()
+        app.state.engine.dispose()
 
 
 app = FastAPI(title="Team Science API", lifespan=lifespan)
@@ -113,6 +130,7 @@ def parse_missing_values(raw_value: str) -> list[str]:
 
 @app.post("/api/analyze")
 async def analyze(
+    request: Request,
     file: UploadFile = File(...),
     delimiter: str = Form(","),
     has_header: bool = Form(True),
@@ -162,6 +180,7 @@ async def analyze(
         df.columns = [str(column) for column in df.columns]
 
         filename = Path(file.filename or "dataset.csv").name
+        analysis_service = request.app.state.analysis_service
         dataset = analysis_service.register_dataset(
             df,
             name=Path(filename).stem or filename,
@@ -201,8 +220,8 @@ async def analyze(
 
 
 @app.get("/api/reports/{analysis_id}")
-def get_report(analysis_id: int) -> dict:
-    with session_scope(engine) as session:
+def get_report(analysis_id: int, request: Request) -> dict:
+    with session_scope(request.app.state.engine) as session:
         report = repository.get_analysis_report(session, analysis_id)
         analysis = None if report else repository.get_analysis(session, analysis_id)
     if report is not None:
@@ -221,8 +240,8 @@ def get_report(analysis_id: int) -> dict:
 
 
 @app.get("/api/reports")
-def list_reports() -> dict:
-    with session_scope(engine) as session:
+def list_reports(request: Request) -> dict:
+    with session_scope(request.app.state.engine) as session:
         reports = repository.list_analysis_reports(session)
 
     return {
