@@ -38,12 +38,14 @@ def create_dataset(
     column_count: int,
     source: Optional[str] = None,
     file_name: Optional[str] = None,
+    user_id: Optional[int] = None,
 ) -> Dataset:
     """Store dataset metadata. Counts must be nonnegative integers."""
     for label, count in (("row_count", row_count), ("column_count", column_count)):
         if isinstance(count, bool) or not isinstance(count, int) or count < 0:
             raise ValueError(f"{label} must be a nonnegative integer")
     dataset = Dataset(
+        user_id=user_id,
         name=name,
         source=source,
         file_name=file_name,
@@ -162,6 +164,42 @@ def save_analysis_report(session: Session, analysis_id: int, report: dict) -> An
 def get_analysis_report(session: Session, analysis_id: int) -> Optional[dict]:
     record = session.get(AnalysisReport, analysis_id)
     return record.report if record is not None else None
+
+
+def get_analysis_for_user(
+    session: Session, analysis_id: int, user_id: int
+) -> Optional[Analysis]:
+    """Return the analysis only when its dataset belongs to the user."""
+    return session.scalars(
+        select(Analysis)
+        .join(Dataset, Analysis.dataset_id == Dataset.id)
+        .where(Analysis.id == analysis_id, Dataset.user_id == user_id)
+    ).first()
+
+
+def get_analysis_report_for_user(
+    session: Session, analysis_id: int, user_id: int
+) -> Optional[dict]:
+    """Return the saved report only when the user owns it, else None."""
+    record = session.scalars(
+        select(AnalysisReport)
+        .join(Analysis, AnalysisReport.analysis_id == Analysis.id)
+        .join(Dataset, Analysis.dataset_id == Dataset.id)
+        .where(AnalysisReport.analysis_id == analysis_id, Dataset.user_id == user_id)
+    ).first()
+    return record.report if record is not None else None
+
+
+def list_analysis_reports_for_user(session: Session, user_id: int) -> list[dict]:
+    """Return the user's saved report snapshots newest first."""
+    records = session.scalars(
+        select(AnalysisReport)
+        .join(Analysis, AnalysisReport.analysis_id == Analysis.id)
+        .join(Dataset, Analysis.dataset_id == Dataset.id)
+        .where(Dataset.user_id == user_id)
+        .order_by(AnalysisReport.analysis_id.desc())
+    )
+    return [record.report for record in records]
 
 
 def list_analysis_reports(session: Session) -> list[dict]:

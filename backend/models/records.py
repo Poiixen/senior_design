@@ -31,6 +31,8 @@ class Dataset(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # Null only for datasets saved before accounts existed; nobody owns those.
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), index=True)
     name: Mapped[str] = mapped_column(Text)
     source: Mapped[Optional[str]] = mapped_column(Text)
     file_name: Mapped[Optional[str]] = mapped_column(Text)
