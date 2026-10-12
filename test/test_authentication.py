@@ -1,5 +1,8 @@
 """Tests for user registration, login, logout and the current-user endpoint."""
 
+from fastapi.testclient import TestClient
+
+from backend.api.main import app
 from backend.database import repository
 from backend.database.connection import session_scope
 
@@ -89,6 +92,28 @@ def test_logout_removes_authentication(client):
 
     assert client.post("/api/auth/logout").status_code == 200
     assert client.get("/api/auth/me").status_code == 401
+
+
+def test_login_survives_a_page_refresh(client):
+    register(client)
+
+    # A refresh is a new request that carries only the stored cookie.
+    refreshed = TestClient(app, cookies=client.cookies)
+
+    assert refreshed.get("/api/auth/me").json()["email"] == "user@example.com"
+
+
+def test_frontend_origin_may_send_credentials(client):
+    response = client.options(
+        "/api/auth/login",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert response.headers["access-control-allow-credentials"] == "true"
 
 
 def test_session_cookie_is_http_only(client):

@@ -403,3 +403,14 @@ def test_initialize_database_adds_report_table_and_keeps_records(tmp_path):
     with session_scope(engine) as session:
         assert [d.name for d in repository.list_datasets(session)] == ["old"]
     engine.dispose()
+
+
+def test_register_dataset_records_the_owner(service, engine, simple_clean_df):
+    with session_scope(engine) as session:
+        user = repository.create_user(session, email="a@example.com", password_hash="h")
+
+    dataset = service.register_dataset(simple_clean_df, name="Readings", user_id=user.id)
+    unowned = service.register_dataset(simple_clean_df, name="Readings")
+
+    assert dataset.user_id == user.id
+    assert unowned.user_id is None
