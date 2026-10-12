@@ -12,3 +12,5 @@ sqlalchemy>=2.0
 pytest
 httpx
 python-multipart
+argon2-cffi
+itsdangerous

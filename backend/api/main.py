@@ -1,5 +1,6 @@
 import json
 import os
+import secrets
 import tempfile
 import traceback
 from contextlib import asynccontextmanager
@@ -9,7 +10,9 @@ from typing import Optional, Union
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.engine import Engine
+from starlette.middleware.sessions import SessionMiddleware
 
+from backend.api.auth import router as auth_router
 from backend.database import repository
 from backend.database.connection import (
     DEFAULT_DATABASE_PATH,
@@ -60,13 +63,27 @@ allowed_origins = [
     ).split(",")
     if origin.strip()
 ]
+# Signs the session cookie. Without SECRET_KEY a random key is used, so
+# logins reset whenever the server restarts; set it for stable sessions.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SECRET_KEY") or secrets.token_urlsafe(32),
+    same_site="lax",
+    https_only=os.getenv("SESSION_COOKIE_SECURE", "").lower() in ("1", "true"),
+    max_age=60 * 60 * 24 * 7,
+)
+
 if allowed_origins:
+    # Added last so it is outermost and answers preflight before the session.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
         allow_methods=["GET", "POST"],
         allow_headers=["*"],
+        allow_credentials=True,
     )
+
+app.include_router(auth_router)
 
 # Configuration: Maximum upload size in bytes (100 MB default)
 MAX_UPLOAD_SIZE = int(os.getenv("MAX_UPLOAD_SIZE", 100 * 1024 * 1024))
