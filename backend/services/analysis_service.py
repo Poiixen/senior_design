@@ -233,6 +233,7 @@ class AnalysisService:
         name: str,
         source: Optional[str] = None,
         file_name: Optional[str] = None,
+        user_id: Optional[int] = None,
     ) -> Dataset:
         """Save dataset metadata and dimensions without storing raw rows."""
         with session_scope(self.engine) as session:
@@ -241,6 +242,7 @@ class AnalysisService:
                 name=name,
                 source=source,
                 file_name=file_name,
+                user_id=user_id,
                 row_count=len(df),
                 column_count=len(df.columns),
             )

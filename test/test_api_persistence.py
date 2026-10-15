@@ -48,8 +48,8 @@ MIXED_FINDINGS_CSV = (
 )
 
 
-def upload(client, csv_content: str, filename: str = "fixture.csv", **form):
-    return client.post(
+def upload(auth_client, csv_content: str, filename: str = "fixture.csv", **form):
+    return auth_client.post(
         "/api/analyze",
         files={"file": (filename, csv_content, "text/csv")},
         data=form or None,
@@ -93,9 +93,9 @@ def assert_strict_json(raw: str) -> None:
 # --- Findings in the response -----------------------------------------
 
 
-def test_upload_reports_missing_values_duplicates_and_outlier(client):
+def test_upload_reports_missing_values_duplicates_and_outlier(auth_client):
     """The three finding types land in the response with exact values."""
-    response = upload(client, MIXED_FINDINGS_CSV)
+    response = upload(auth_client, MIXED_FINDINGS_CSV)
 
     assert response.status_code == 200
     body = response.json()
@@ -137,12 +137,12 @@ def test_upload_reports_missing_values_duplicates_and_outlier(client):
 # --- Response matches what was saved ----------------------------------
 
 
-def test_saved_report_matches_the_response_it_came_from(client, api_engine):
+def test_saved_report_matches_the_response_it_came_from(auth_client, api_engine):
     """Re-reading the report returns exactly the uploaded response."""
-    body = upload(client, MIXED_FINDINGS_CSV).json()
+    body = upload(auth_client, MIXED_FINDINGS_CSV).json()
     analysis_id = body["analysis_id"]
 
-    retrieved = client.get(f"/api/reports/{analysis_id}")
+    retrieved = auth_client.get(f"/api/reports/{analysis_id}")
     assert retrieved.status_code == 200
     assert retrieved.json() == body
 
@@ -150,9 +150,9 @@ def test_saved_report_matches_the_response_it_came_from(client, api_engine):
     assert stored_report(api_engine, analysis_id) == body
 
 
-def test_saved_findings_match_the_reported_findings(client, api_engine):
+def test_saved_findings_match_the_reported_findings(auth_client, api_engine):
     """The diagnostic rows written by the service agree with the response."""
-    body = upload(client, MIXED_FINDINGS_CSV).json()
+    body = upload(auth_client, MIXED_FINDINGS_CSV).json()
     analysis_id = body["analysis_id"]
 
     with session_scope(api_engine) as session:
@@ -170,23 +170,23 @@ def test_saved_findings_match_the_reported_findings(client, api_engine):
     assert duplicates[0].severity == "warning"
 
 
-def test_each_upload_is_persisted_as_a_separate_report(client):
+def test_each_upload_is_persisted_as_a_separate_report(auth_client):
     """Two uploads keep independent IDs, findings and report snapshots."""
-    first = upload(client, MIXED_FINDINGS_CSV, filename="first.csv").json()
-    second = upload(client, MIXED_FINDINGS_CSV, filename="second.csv").json()
+    first = upload(auth_client, MIXED_FINDINGS_CSV, filename="first.csv").json()
+    second = upload(auth_client, MIXED_FINDINGS_CSV, filename="second.csv").json()
 
     assert first["analysis_id"] != second["analysis_id"]
     assert first["filename"] == "first.csv"
     assert second["filename"] == "second.csv"
 
-    assert client.get(f"/api/reports/{first['analysis_id']}").json() == first
-    assert client.get(f"/api/reports/{second['analysis_id']}").json() == second
+    assert auth_client.get(f"/api/reports/{first['analysis_id']}").json() == first
+    assert auth_client.get(f"/api/reports/{second['analysis_id']}").json() == second
 
 
 # --- Failure leaves nothing behind ------------------------------------
 
 
-def test_detector_failure_leaves_no_findings_and_no_report(client, api_engine, monkeypatch):
+def test_detector_failure_leaves_no_findings_and_no_report(auth_client, api_engine, monkeypatch):
     """A failed run is recorded as failed, with no findings and no report."""
     def explode(df):
         raise RuntimeError("detector failed")
@@ -196,7 +196,7 @@ def test_detector_failure_leaves_no_findings_and_no_report(client, api_engine, m
     )
 
     before = latest_analysis_id(api_engine)
-    response = upload(client, MIXED_FINDINGS_CSV, filename="broken.csv")
+    response = upload(auth_client, MIXED_FINDINGS_CSV, filename="broken.csv")
 
     assert response.status_code == 500
     # The generic handler must not leak the underlying exception.
@@ -213,12 +213,12 @@ def test_detector_failure_leaves_no_findings_and_no_report(client, api_engine, m
 
     assert stored_report(api_engine, analysis_id) is None
     # A failed run is reported as a conflict, not as a missing report.
-    response = client.get(f"/api/reports/{analysis_id}")
+    response = auth_client.get(f"/api/reports/{analysis_id}")
     assert response.status_code == 409
     assert "failed" in response.json()["detail"]
 
 
-def test_partial_write_failure_rolls_back_every_finding(client, api_engine, monkeypatch):
+def test_partial_write_failure_rolls_back_every_finding(auth_client, api_engine, monkeypatch):
     """Failing midway through the inserts leaves no partial findings."""
     import backend.services.analysis_service as service
 
@@ -236,7 +236,7 @@ def test_partial_write_failure_rolls_back_every_finding(client, api_engine, monk
     )
 
     before = latest_analysis_id(api_engine)
-    response = upload(client, MIXED_FINDINGS_CSV, filename="partial.csv")
+    response = upload(auth_client, MIXED_FINDINGS_CSV, filename="partial.csv")
 
     assert response.status_code == 500
     assert calls["n"] >= 2, "the second insert should have been reached"
@@ -253,17 +253,17 @@ def test_partial_write_failure_rolls_back_every_finding(client, api_engine, monk
 
     assert stored_report(api_engine, analysis_id) is None
     # A failed run is reported as a conflict, not as a missing report.
-    response = client.get(f"/api/reports/{analysis_id}")
+    response = auth_client.get(f"/api/reports/{analysis_id}")
     assert response.status_code == 409
     assert "failed" in response.json()["detail"]
 
 
-def test_rejected_upload_creates_no_analysis_at_all(client, api_engine):
+def test_rejected_upload_creates_no_analysis_at_all(auth_client, api_engine):
     """Input rejected before analysis starts leaves the database untouched."""
     before = latest_analysis_id(api_engine)
 
-    assert upload(client, "", filename="empty.csv").status_code == 400
-    assert upload(client, "a,b\n1,2\n", filename="notes.txt").status_code == 400
+    assert upload(auth_client, "", filename="empty.csv").status_code == 400
+    assert upload(auth_client, "a,b\n1,2\n", filename="notes.txt").status_code == 400
 
     assert latest_analysis_id(api_engine) == before
 
@@ -271,9 +271,9 @@ def test_rejected_upload_creates_no_analysis_at_all(client, api_engine):
 # --- Edge-case inputs --------------------------------------------------
 
 
-def test_warning_only_input_is_analyzed_and_persisted(client):
+def test_warning_only_input_is_analyzed_and_persisted(auth_client):
     """Warnings do not block analysis, and they survive the round trip."""
-    body = upload(client, "a,b\n1,p\n2,q\n3,r\n", filename="small.csv").json()
+    body = upload(auth_client, "a,b\n1,p\n2,q\n3,r\n", filename="small.csv").json()
 
     assert body["status"] == "completed"
     assert body["validation"]["valid"] is True
@@ -291,12 +291,12 @@ def test_warning_only_input_is_analyzed_and_persisted(client):
     assert body["missing_values"] == []
     assert body["summary"]["duplicate_rows"] == 0
 
-    assert client.get(f"/api/reports/{body['analysis_id']}").json() == body
+    assert auth_client.get(f"/api/reports/{body['analysis_id']}").json() == body
 
 
-def test_all_missing_numeric_column_serializes_and_persists(client, api_engine):
+def test_all_missing_numeric_column_serializes_and_persists(auth_client, api_engine):
     """An all-NaN numeric column yields JSON nulls, not NaN, and round trips."""
-    body = upload(client, 
+    body = upload(auth_client, 
         "label,measure\nr1,\nr2,\nr3,\nr4,\nr5,\n", filename="empty-column.csv"
     ).json()
 
@@ -326,18 +326,18 @@ def test_all_missing_numeric_column_serializes_and_persists(client, api_engine):
     # not valid JSON, so assert on the raw text that was written.
     assert_strict_json(stored_report_text(api_engine, body["analysis_id"]))
 
-    retrieved = client.get(f"/api/reports/{body['analysis_id']}")
+    retrieved = auth_client.get(f"/api/reports/{body['analysis_id']}")
     assert retrieved.json() == body
 
 
 # --- Listing -----------------------------------------------------------
 
 
-def test_report_listing_summarizes_without_the_full_payload(client):
+def test_report_listing_summarizes_without_the_full_payload(auth_client):
     """The index carries summary fields only, newest first."""
-    body = upload(client, MIXED_FINDINGS_CSV, filename="listed.csv").json()
+    body = upload(auth_client, MIXED_FINDINGS_CSV, filename="listed.csv").json()
 
-    listing = client.get("/api/reports")
+    listing = auth_client.get("/api/reports")
     assert listing.status_code == 200
     reports = listing.json()["reports"]
 

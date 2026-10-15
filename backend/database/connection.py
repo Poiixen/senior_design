@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator, Union
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.engine import Engine, URL
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
@@ -54,8 +54,13 @@ def create_sqlite_engine(
 def initialize_database(engine: Engine) -> None:
     """Create missing tables and indexes without deleting existing records.
 
+    Datasets saved before accounts existed gain a nullable owner column.
     """
     Base.metadata.create_all(engine)
+    if "user_id" not in {c["name"] for c in inspect(engine).get_columns("datasets")}:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE datasets ADD COLUMN user_id INTEGER REFERENCES users (id)"))
+            connection.execute(text("CREATE INDEX ix_datasets_user_id ON datasets (user_id)"))
 
 
 @contextmanager
