@@ -11,7 +11,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.models import Analysis, Dataset, DiagnosticResult
+from backend.models import Analysis, AnalysisReport, Dataset, DiagnosticResult
 
 
 def create_dataset(
@@ -133,3 +133,24 @@ def list_diagnostic_results(
         .where(DiagnosticResult.analysis_id == analysis_id)
         .order_by(DiagnosticResult.id)
     ))
+
+
+def save_analysis_report(session: Session, analysis_id: int, report: dict) -> AnalysisReport:
+    """Save the complete structured report in the analysis transaction."""
+    record = AnalysisReport(analysis_id=analysis_id, report=report)
+    session.add(record)
+    session.flush()
+    return record
+
+
+def get_analysis_report(session: Session, analysis_id: int) -> Optional[dict]:
+    record = session.get(AnalysisReport, analysis_id)
+    return record.report if record is not None else None
+
+
+def list_analysis_reports(session: Session) -> list[dict]:
+    """Return saved report snapshots newest first."""
+    records = session.scalars(
+        select(AnalysisReport).order_by(AnalysisReport.analysis_id.desc())
+    )
+    return [record.report for record in records]

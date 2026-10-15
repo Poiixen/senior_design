@@ -37,7 +37,7 @@ and the unit tests pass with no dataset on disk.
            ▼               ▼
         Database          API
                             ▼
-                     Future Dashboard
+                     React Dashboard
 ```
 
 Well-formed CSVs go through `load_csv()`. Datasets with quirks get an adapter
@@ -56,6 +56,27 @@ source .venv/Scripts/activate  # Windows (Git Bash)
 
 pip install -r backend/requirements.txt
 ```
+
+### Run the full development stack
+
+The Bash launcher is repository-relative and works from any team member's
+checkout path. It starts both reload-enabled servers, records their process
+IDs under the ignored `.run/` directory, and stops both process trees on
+Ctrl+C.
+
+```bash
+bash ./run-all.sh
+```
+
+If a terminal closes unexpectedly or either development port remains busy,
+run the cleanup script before restarting:
+
+```bash
+bash ./stop-all.sh
+```
+
+The cleanup script first uses this checkout's PID files, then clears listeners
+on the two project development ports (`5173` and `8000`) as a fallback.
 
 ## Database
 
@@ -78,19 +99,92 @@ stored, only metadata and findings. Group writes with `session_scope(engine)`.
 uvicorn backend.api.main:app --reload
 ```
 
-`GET /health`, and `POST /api/analyze` taking a CSV upload. Docs at `/docs`.
+`GET /health`, `POST /api/analyze`, and `GET /api/reports/{analysis_id}`.
+Interactive API docs are available at `http://127.0.0.1:8000/docs`.
+
+The upload endpoint accepts multipart form fields:
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `file` | required | CSV file |
+| `delimiter` | `,` | Comma, semicolon, tab, or pipe in the upload UI |
+| `has_header` | `true` | Whether the first row contains column names |
+| `missing_values` | `[]` | JSON array of additional missing-value strings; standard pandas markers remain enabled |
+
+Successful uploads return the complete report, including `analysis_id`. The
+frontend opens `/reports/{analysis_id}` and retrieves the saved report from the
+API. Reports survive page refreshes and backend restarts. Raw CSV rows are not
+retained; only metadata and diagnostic summaries are saved.
 
 ## Frontend
 
-React Router app.
+React Router v8 dashboard for dataset analysis. Full-stack type safety with
+TypeScript and React Router's file-based routing. Styled with Tailwind CSS v4.
+
+### How it works
+
+The frontend is a single-page application with three main routes:
+
+- **Home** (`/`) — Upload CSV form with parsing options (delimiter, header row, custom missing-value markers). Submits to the backend API and redirects to the report on success.
+- **Report** (`/reports/:id`) — Displays analysis results: dataset summary, missing-value table (sortable), duplicate count, and numeric outliers. `/reports/sample` is a static demo that works without a backend.
+- **Documentation** (`/documentation`) — Guide and reference.
+
+The app is API-driven: it uploads files to `POST /api/analyze` and fetches reports from `GET /api/reports/:id`.
+Results persist across page refreshes and backend restarts. Raw CSV rows are never stored, only metadata
+and diagnostic findings.
+
+### Running the frontend
+
+Requires **Node.js 22.22.0+** and the backend running separately.
 
 ```bash
 cd frontend
-npm install
-npm run dev        # hot reload
-npm run build
-npm run typecheck
+npm install                # Install dependencies (one time)
+npm run dev                # Start dev server with hot reload at http://127.0.0.1:5173
+npm run build              # Production build
+npm run typecheck          # TypeScript checking
 ```
+
+### Configuration
+
+Copy `frontend/.env.example` to `frontend/.env` and restart the dev server after changes:
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `API_PROXY_TARGET` | `http://127.0.0.1:8000` | Backend for development; Vite proxies `/api` requests here |
+| `VITE_API_BASE_URL` | empty | Public API origin for production (without `/api`); empty uses same-origin |
+| `CORS_ALLOWED_ORIGINS` | local Vite origins | Backend setting: comma-separated frontend origins allowed to call the API |
+
+During development, the Vite proxy makes all requests same-origin, so no CORS setup is needed.
+For production, configure your web server to route `/api` to FastAPI or set `VITE_API_BASE_URL`
+at build time and ensure the backend allows that origin.
+
+### Report schema
+
+The API response schema is documented in [frontend/app/lib/report.ts](frontend/app/lib/report.ts).
+- `dataset` — dimensions (rows and columns)
+- `summary` — column counts, duplicate totals, issue total, and execution status
+- `missing_values` — all columns with missing counts and severity
+- `outliers` — all numeric columns with bounds, counts, and flagged values
+
+`summary.issues_detected` counts distinct problems (one per affected column for missing values,
+one per numeric column for outliers, one for duplicates, one per warning), not individual bad cells.
+`status: "completed"` indicates successful execution, independent of issue count.
+
+Missing severity: none (0%), low (<5%), moderate (<20%), high (≥20%).
+Outliers are flagged for review, not automatically incorrect. Missing and outlier percentages use
+appropriate denominators (all rows for missing, non-missing numeric values for outliers).
+A JSON `null` measurement displays as **Unavailable**; `0` remains `0`.
+
+### Troubleshooting
+
+| Problem | Fix |
+| --- | --- |
+| `Cannot find module` errors | Run `npm install` in the frontend folder |
+| `react-router requires Node > 22.22.0` | Upgrade Node.js at https://nodejs.org/ |
+| Port 5173 already in use | Kill the process on that port or edit `frontend/vite.config.ts` `port` value |
+| API calls fail or timeout | Ensure backend is running on `http://127.0.0.1:8000` (or update `API_PROXY_TARGET`) |
+| Changes don't appear | Save the file; Vite hot-reloads automatically. If not, restart `npm run dev` |
 
 ## Tests
 
@@ -131,9 +225,10 @@ They need `data/raw/UCI_ADULT_INCOME/` on disk, and skip rather than fail when
 it is absent.
 
 Database tests stay isolated from the checkout: `test_database.py` and
-`test_analysis_service.py` build each engine under pytest's `tmp_path`, and CI
-sets `DATABASE_PATH` to a path in the runner's temp directory so importing the
-API cannot create a database inside the working tree.
+`test_analysis_service.py` build each engine under pytest's `tmp_path`, and the
+API tests get a fresh one per test from the `api_engine` fixture. CI also sets
+`DATABASE_PATH` to the runner's temp directory as a fallback, so an app started
+without that fixture still writes outside the working tree.
 
 ```python
 def test_something(simple_clean_df):
@@ -151,6 +246,49 @@ def test_something(simple_clean_df):
 
 Sizes are pinned to thresholds in the code under test: 100 rows so percentages
 land exactly on the severity bands, 8 rows so 2 duplicates is exactly 25%.
+
+### API-to-database tests
+
+[test/test_api_persistence.py](test/test_api_persistence.py) covers the path
+that the endpoint tests and the service tests each only half cover: that one
+upload produces findings in the response, the same findings in the database,
+and a retrievable report identical to the response.
+
+Importing the API opens no database. On startup the server calls
+`configure_database(app, path)` with `DATABASE_PATH`, defaulting to
+`data/analysis.sqlite3` inside the repository. Tests call the same function
+through the `api_engine` and `client` fixtures in
+[test/conftest.py](test/conftest.py), so each API test gets a fresh SQLite
+file under pytest's `tmp_path` and never touches the working tree or another
+test's rows.
+
+### Browser smoke test
+
+The automated tests stop at the API. Run this by hand after changing the
+upload form, the report page, or the report schema. Start both services with
+`bash run-all.sh` (or `.\run-all.ps1`), then:
+
+1. **Upload.** Open <http://127.0.0.1:5173>, choose a CSV with a known problem
+   in it, and submit. `test/` has none on disk; the 20-row fixture at the top
+   of [test/test_api_persistence.py](test/test_api_persistence.py) is a good
+   one to paste into a file, since its findings are known exactly.
+2. **Report display.** The report page should show the row and column counts,
+   a missing-values row for `reading` at 10% (severity moderate), one `score`
+   outlier, and 2 duplicate rows. An all-missing numeric column shows
+   "Unavailable" for its quartile bounds rather than `NaN`.
+3. **Refresh.** Reload the page. The report is re-fetched from the database by
+   its ID, so the same numbers must come back and the URL must stay on
+   `/reports/<id>`. Losing the report on refresh means the page is rendering
+   from in-memory state instead of the stored report.
+4. **Direct navigation.** Paste the same `/reports/<id>` URL into a new tab.
+   It should render the same report with no upload step.
+5. **History.** Visit `/reports`. The upload should be listed newest first,
+   with its filename, row and column counts, and a Completed badge.
+6. **Unknown ID.** Visit `/reports/999999999`. The page should report that the
+   report was not found, not crash or hang.
+
+`/reports/sample` renders a built-in example and needs no backend, so it
+isolates frontend rendering problems from API problems.
 
 ## Structure
 
@@ -193,7 +331,8 @@ pyproject.toml                  # pytest config
 | `detect_outliers_iqr(df, column)` | Quartiles, bounds, outlier count and percentage. Default multiplier 1.5 |
 | `detect_numeric_outliers(df)` | The above for every numeric column |
 | `AnalysisService(engine).register_dataset(df, name=...)` | `Dataset` row — metadata and dimensions only |
-| `AnalysisService(engine).run_analysis(dataset_id, df)` | `Analysis` row; findings commit together or the run is marked failed |
+| `AnalysisService(engine).run_analysis(dataset_id, df)` | `Analysis` row. Validates first; blocking errors skip profiling, missing values, duplicates and outliers. Findings commit together or the run is marked failed |
+| `AnalysisService(engine).list_findings(analysis_id)` | Saved `DiagnosticResult` rows for a run |
 
 Percentages are 0–100. Outlier bounds are inclusive.
 

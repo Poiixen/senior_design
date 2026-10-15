@@ -27,6 +27,9 @@ node_modules/
 .vscode/
 .DS_Store
 
+# Local development process state
+.run/
+
 # Stray PowerShell module analysis cache (sometimes created at cwd root)
 Microsoft/
 
