@@ -23,6 +23,54 @@ export interface OutlierResult {
   upper_bound: number | null;
 }
 
+/** Fields the backend profiler reports for every column. */
+interface ColumnProfileBase {
+  name: string;
+  dtype: string;
+  non_null_count: number;
+  missing_count: number;
+  missing_percentage: number | null;
+  unique_values: number;
+  unique_percentage: number | null;
+}
+
+export interface NumericColumnProfile extends ColumnProfileBase {
+  category: "numeric";
+  mean: number | null;
+  median: number | null;
+  std_dev: number | null;
+  min: number | null;
+  q1: number | null;
+  q3: number | null;
+  max: number | null;
+}
+
+export interface CategoricalColumnProfile extends ColumnProfileBase {
+  category: "categorical";
+  most_common_value: string | number | boolean | null;
+  most_common_count: number | null;
+  most_common_percentage: number | null;
+}
+
+export type ColumnProfile = NumericColumnProfile | CategoricalColumnProfile;
+
+export interface RepeatedValueSummary {
+  column_name: string;
+  repeated_values: number;
+  rows_affected: number;
+}
+
+/** Duplicate-row analysis. Group-level fields are absent from reports saved before they existed. */
+export interface DuplicateAnalysisResult {
+  duplicate_count: number;
+  duplicate_percentage: number | null;
+  duplicate_group_count?: number;
+  rows_in_duplicate_groups?: number;
+  largest_duplicate_group_size?: number;
+  duplicate_columns?: string[];
+  repeated_value_summary?: RepeatedValueSummary[];
+}
+
 export interface AnalysisReport {
   analysis_id: number;
   filename: string;
@@ -41,6 +89,10 @@ export interface AnalysisReport {
   parsing_options: ParsingOptions;
   missing_values: MissingValueResult[];
   outliers: OutlierResult[];
+  /** Null or absent when profiling did not run or the report predates column profiles. */
+  column_profiles?: ColumnProfile[] | null;
+  /** Null or absent when profiling did not run or the report predates duplicate details. */
+  duplicates?: DuplicateAnalysisResult | null;
   validation: { valid: boolean; errors: string[]; warnings: string[] };
   diagnostics: ({ type: string } & Record<string, unknown>)[];
 }
@@ -69,6 +121,31 @@ function isTimestamp(value: unknown): value is string {
   return typeof value === "string" && value.length > 0 && Number.isFinite(Date.parse(value));
 }
 
+function isColumnProfile(value: unknown): value is ColumnProfile {
+  if (!isRecord(value) || typeof value.name !== "string" || typeof value.dtype !== "string" ||
+      !isCount(value.non_null_count) || !isCount(value.missing_count) || !isPercentage(value.missing_percentage) ||
+      !isCount(value.unique_values) || !isPercentage(value.unique_percentage)) return false;
+  if (value.category === "numeric") {
+    return ["mean", "median", "std_dev", "min", "q1", "q3", "max"].every((key) => isMeasurement(value[key]));
+  }
+  return value.category === "categorical" &&
+    (value.most_common_value === null || ["string", "number", "boolean"].includes(typeof value.most_common_value)) &&
+    (value.most_common_count === null || isCount(value.most_common_count)) &&
+    isPercentage(value.most_common_percentage);
+}
+
+function isDuplicateAnalysis(value: unknown): value is DuplicateAnalysisResult {
+  return isRecord(value) && isCount(value.duplicate_count) && isPercentage(value.duplicate_percentage) &&
+    ["duplicate_group_count", "rows_in_duplicate_groups", "largest_duplicate_group_size"]
+      .every((key) => value[key] === undefined || isCount(value[key])) &&
+    (value.duplicate_columns === undefined || isStringArray(value.duplicate_columns)) &&
+    (value.repeated_value_summary === undefined || (Array.isArray(value.repeated_value_summary) &&
+      value.repeated_value_summary.every((entry) =>
+        isRecord(entry) && typeof entry.column_name === "string" &&
+        isCount(entry.repeated_values) && isCount(entry.rows_affected),
+      )));
+}
+
 /** Validate persisted API reports before any nested fields reach the interface. */
 export function isAnalysisReport(value: unknown): value is AnalysisReport {
   if (!isRecord(value) || !isCount(value.analysis_id) || value.analysis_id === 0 ||
@@ -95,6 +172,9 @@ export function isAnalysisReport(value: unknown): value is AnalysisReport {
     isRecord(entry) && typeof entry.column_name === "string" &&
     isCount(entry.outlier_count) && isPercentage(entry.outlier_percentage) &&
     ["q1", "q3", "iqr", "lower_bound", "upper_bound"].every((key) => isMeasurement(entry[key])),
+  ) && (value.column_profiles == null ||
+    (Array.isArray(value.column_profiles) && value.column_profiles.every(isColumnProfile))
+  ) && (value.duplicates == null || isDuplicateAnalysis(value.duplicates)
   ) && Array.isArray(value.diagnostics) && value.diagnostics.every((entry) =>
     isRecord(entry) && typeof entry.type === "string",
   );
