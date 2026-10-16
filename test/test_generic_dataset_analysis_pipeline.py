@@ -77,3 +77,23 @@ def test_non_dataframe_input_returns_empty_results():
 
     assert result["profile"] == {}
     assert result["diagnostics"] == []
+
+def test_column_quality_is_detected():
+    df = pd.DataFrame({
+        "country": ["USA", "USA", "USA", "USA"],
+        "salary": ["50000", "52000", "unknown", "48000"],
+    })
+
+    result = analyze_dataset(df)
+
+    column_quality_results = next(
+        item["results"]
+        for item in result["diagnostics"]
+        if item["type"] == "column_quality"
+    )
+
+    issues = {
+        (finding["column"], finding["metadata"]["issue"])
+        for finding in column_quality_results
+    }
+    assert issues == {("country", "constant"), ("salary", "mixed_numeric")}
