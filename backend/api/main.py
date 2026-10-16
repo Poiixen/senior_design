@@ -20,7 +20,7 @@ from backend.database.connection import (
     initialize_database,
     session_scope,
 )
-from backend.ingestion.csv_loader import CSVLoadError, load_csv
+from backend.ingestion.dataset_loader import DatasetLoadError, SUPPORTED_FILE_EXTENSIONS, load_dataset
 from backend.models import User
 from backend.services.analysis_service import AnalysisService
 
@@ -113,8 +113,8 @@ async def read_upload_with_limit(
     if not file.filename:
         raise UploadError("No filename provided.")
 
-    if not file.filename.lower().endswith(".csv"):
-        raise UploadError("File must be a CSV (.csv extension required).")
+    if Path(file.filename).suffix.lower() not in SUPPORTED_FILE_EXTENSIONS:
+        raise UploadError("Unsupported file format. Choose a CSV, TSV, XLSX, or JSON file.")
 
     contents = bytearray()
     while True:
@@ -168,37 +168,31 @@ async def analyze(
             dict.fromkeys([*STANDARD_MISSING_VALUES, *custom_missing_values])
         )
 
-        # Write to temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
+        filename = Path(file.filename or "dataset.csv").name
+        extension = Path(filename).suffix.lower()
+        # Preserve the source suffix because spreadsheet readers rely on it.
+        with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as tmp:
             tmp.write(contents)
             tmp_path = tmp.name
 
         # Load and analyze
         try:
-            df = load_csv(
-                tmp_path,
-                sep=delimiter,
-                header=0 if has_header else None,
-                na_values=effective_missing_values,
-                keep_default_na=True,
-                # Common CSV exports (including UCI Adult) put a space after
-                # delimiters. Ignore that formatting whitespace so markers
-                # such as "?" match values written as " ?".
-                skipinitialspace=True,
-            )
-        except CSVLoadError as exc:
-            raise UploadError(
-                "The CSV file could not be parsed. Check its delimiter and formatting."
-            ) from exc
-        except UnicodeDecodeError:
-            raise UploadError(
-                "File encoding is not supported. Please use UTF-8 or ASCII."
-            )
+            loader_options = {}
+            if extension in {".csv", ".tsv"}:
+                loader_options = {
+                    "sep": delimiter,
+                    "header": 0 if has_header else None,
+                    "na_values": effective_missing_values,
+                    "keep_default_na": True,
+                    "skipinitialspace": True,
+                }
+            df = load_dataset(tmp_path, filename, **loader_options)
+        except DatasetLoadError as exc:
+            raise UploadError(str(exc)) from exc
 
         # Headerless CSVs receive integer labels from pandas; report fields use strings.
         df.columns = [str(column) for column in df.columns]
 
-        filename = Path(file.filename or "dataset.csv").name
         analysis_service = request.app.state.analysis_service
         dataset = analysis_service.register_dataset(
             df,

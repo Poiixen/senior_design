@@ -8,6 +8,7 @@ from sqlalchemy.engine import Engine
 from backend.database import repository
 from backend.database.connection import session_scope
 from backend.diagnostics.generic_dataset_profiler import profile_dataset
+from backend.diagnostics.correlation_analysis import calculate_correlation_matrix
 from backend.diagnostics.iqr_outlier_detection import detect_numeric_outliers
 from backend.diagnostics.validate_dataset import validate_dataset
 from backend.models import Analysis, Dataset, DiagnosticResult
@@ -60,6 +61,7 @@ def _build_report(
     outliers: list,
     parsing_options: Optional[dict[str, Any]],
     findings: list[DiagnosticResultSchema],
+    correlation: dict,
 ) -> AnalysisReport:
     """Assemble the saved report from results computed once by the run."""
     missing_values = [
@@ -104,6 +106,9 @@ def _build_report(
         parsing_options=ParsingOptions(**(parsing_options or {})),
         missing_values=missing_values,
         outliers=outlier_results,
+        column_profiles=profile["column_details"] if profile else None,
+        duplicates=profile["duplicates"] if profile else None,
+        correlation=correlation,
         validation=validation,
         diagnostics=diagnostics,
         findings=findings,
@@ -283,11 +288,13 @@ class AnalysisService:
             results = _validation_results(validation)
             profile = None
             outliers = []
+            correlation = {"columns": [], "matrix": []}
 
             if validation["valid"]:
                 total_rows = len(df)
                 profile = profile_dataset(df)
                 outliers = detect_numeric_outliers(df)
+                correlation = calculate_correlation_matrix(df)
                 results.extend(_profile_results(profile))
                 results.extend(
                     _missing_value_result(row, total_rows)
@@ -317,6 +324,7 @@ class AnalysisService:
                     outliers=outliers,
                     parsing_options=parsing_options,
                     findings=results,
+                    correlation=correlation,
                 )
                 repository.save_analysis_report(
                     session, analysis_id, report.model_dump(mode="json")

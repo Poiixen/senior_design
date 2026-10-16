@@ -83,6 +83,30 @@ def test_analyze_rejects_empty_csv(auth_client):
     assert response.status_code == 400
 
 
+def test_analyze_accepts_tsv_and_json(auth_client):
+    tsv = auth_client.post(
+        "/api/analyze",
+        files={"file": ("data.tsv", "name\tage\nAlice\t20\n", "text/tab-separated-values")},
+    )
+    assert tsv.status_code == 200
+    assert tsv.json()["dataset"] == {"rows": 1, "columns": 2}
+
+    json_response = auth_client.post(
+        "/api/analyze",
+        files={"file": ("data.json", '[{"name":"Alice","age":20}]', "application/json")},
+    )
+    assert json_response.status_code == 200
+    assert json_response.json()["filename"] == "data.json"
+
+
+def test_analyze_rejects_unsupported_extension(auth_client):
+    response = auth_client.post(
+        "/api/analyze", files={"file": ("data.txt", "name,age\nAlice,20", "text/plain")}
+    )
+    assert response.status_code == 400
+    assert "Unsupported file format" in response.json()["detail"]
+
+
 def test_analyze_honors_header_delimiter_and_missing_markers(auth_client):
     response = auth_client.post(
         "/api/analyze",
