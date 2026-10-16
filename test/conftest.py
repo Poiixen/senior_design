@@ -40,6 +40,22 @@ def client(api_engine):
     return TestClient(app)
 
 
+def register_user(client, email="user@example.com", password="correct-horse"):
+    """Register an account; the client keeps the login cookie."""
+    response = client.post(
+        "/api/auth/register", json={"email": email, "password": password}
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
+@pytest.fixture
+def auth_client(client):
+    """A test client already logged in as a registered user."""
+    register_user(client)
+    return client
+
+
 # --- Generic fixtures -------------------------------------------------
 
 

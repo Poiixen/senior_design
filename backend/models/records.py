@@ -14,6 +14,15 @@ class Base(DeclarativeBase):
     pass
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(Text, unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class Dataset(Base):
     __tablename__ = "datasets"
     __table_args__ = (
@@ -22,6 +31,8 @@ class Dataset(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # Null only for datasets saved before accounts existed; nobody owns those.
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), index=True)
     name: Mapped[str] = mapped_column(Text)
     source: Mapped[Optional[str]] = mapped_column(Text)
     file_name: Mapped[Optional[str]] = mapped_column(Text)

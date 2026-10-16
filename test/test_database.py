@@ -271,3 +271,65 @@ def test_in_memory_database_is_shared_across_repository_sessions():
             assert get_dataset(session, dataset_id).name == "Weather observations"
     finally:
         engine.dispose()
+
+
+def test_dataset_records_its_owner(database):
+    from backend.database.repository import create_user
+
+    with session_scope(database) as session:
+        user = create_user(session, email="a@example.com", password_hash="hash")
+        dataset = create_dataset(
+            session, name="Owned", row_count=1, column_count=1, user_id=user.id
+        )
+        unowned = add_dataset(session, "Unowned")
+
+    assert dataset.user_id == user.id
+    assert unowned.user_id is None
+
+
+def test_dataset_owner_must_be_an_existing_user(database):
+    with pytest.raises(IntegrityError):
+        with session_scope(database) as session:
+            create_dataset(
+                session, name="Orphan", row_count=1, column_count=1, user_id=999
+            )
+
+
+def test_user_email_must_be_unique(database):
+    from backend.database.repository import create_user
+
+    with pytest.raises(IntegrityError):
+        with session_scope(database) as session:
+            create_user(session, email="a@example.com", password_hash="one")
+            create_user(session, email="a@example.com", password_hash="two")
+
+
+def test_report_queries_only_return_the_owners_reports(database):
+    from backend.database.repository import (
+        create_user,
+        get_analysis_for_user,
+        get_analysis_report_for_user,
+        list_analysis_reports_for_user,
+        save_analysis_report,
+    )
+
+    with session_scope(database) as session:
+        owner = create_user(session, email="a@example.com", password_hash="h")
+        other = create_user(session, email="b@example.com", password_hash="h")
+        dataset = create_dataset(
+            session, name="Owned", row_count=1, column_count=1, user_id=owner.id
+        )
+        analysis = create_analysis(session, dataset.id)
+        finish_analysis(session, analysis.id)
+        save_analysis_report(session, analysis.id, {"analysis_id": analysis.id})
+
+        assert get_analysis_report_for_user(session, analysis.id, owner.id) == {
+            "analysis_id": analysis.id
+        }
+        assert list_analysis_reports_for_user(session, owner.id) == [
+            {"analysis_id": analysis.id}
+        ]
+        assert get_analysis_for_user(session, analysis.id, owner.id) is not None
+        assert get_analysis_report_for_user(session, analysis.id, other.id) is None
+        assert list_analysis_reports_for_user(session, other.id) == []
+        assert get_analysis_for_user(session, analysis.id, other.id) is None

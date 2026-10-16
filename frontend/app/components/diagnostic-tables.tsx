@@ -6,22 +6,27 @@ import {
   type AnalysisReport,
 } from "~/lib/report";
 
-type SortDirection = "ascending" | "descending";
+export type SortDirection = "ascending" | "descending";
 
-function SortButton({
+/** An inactive button marks a sortable column that is not the current sort key. */
+export function SortButton({
   label,
   direction,
   onClick,
+  active = true,
 }: {
   label: string;
   direction: SortDirection;
   onClick: () => void;
+  active?: boolean;
 }) {
   return (
     <button className="diagnostic-sort" type="button" onClick={onClick}>
-      {label} <span aria-hidden="true">{direction === "descending" ? "↓" : "↑"}</span>
+      {label} <span aria-hidden="true">{!active ? "↕" : direction === "descending" ? "↓" : "↑"}</span>
       <span className="report-sr-only">
-        {` (sorted ${direction}; activate to sort ${direction === "descending" ? "ascending" : "descending"})`}
+        {active
+          ? ` (sorted ${direction}; activate to sort ${direction === "descending" ? "ascending" : "descending"})`
+          : " (activate to sort)"}
       </span>
     </button>
   );
