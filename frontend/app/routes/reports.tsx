@@ -1,6 +1,6 @@
-import { Link } from "react-router";
+import { Link, redirect } from "react-router";
 import type { Route } from "./+types/reports";
-import { getReports } from "~/lib/api";
+import { ApiError, getReports } from "~/lib/api";
 import { formatNumber } from "~/lib/report";
 import { Icon } from "~/components/icon";
 
@@ -11,11 +11,12 @@ export function meta() {
   ];
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
-  return {
-    reports: await getReports(request.signal, new URL(request.url).origin),
-  };
+export async function clientLoader({ request }: Route.ClientLoaderArgs) {
+  try { return { reports: await getReports(request.signal) }; }
+  catch (error) { if (error instanceof ApiError && error.status === 401) throw redirect("/login?next=/reports"); throw error; }
 }
+
+export function HydrateFallback() { return <section className="reports-empty"><p>Loading saved reports…</p></section>; }
 
 function ReportDate({ value }: { value: string | null }) {
   if (!value) return <span>Not completed</span>;

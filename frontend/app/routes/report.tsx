@@ -1,6 +1,7 @@
 import {
   isRouteErrorResponse,
   Link,
+  redirect,
   useRevalidator,
   useSearchParams,
   type ShouldRevalidateFunctionArgs,
@@ -9,7 +10,7 @@ import { ColumnProfileTable } from "~/components/column-profile-table";
 import { MissingValueTable, OutlierTable } from "~/components/diagnostic-tables";
 import { DuplicateAnalysis } from "~/components/duplicate-analysis";
 import { Icon } from "~/components/icon";
-import { getReport } from "~/lib/api";
+import { ApiError, getReport } from "~/lib/api";
 import { formatNumber, type AnalysisReport } from "~/lib/report";
 import { sampleReport } from "~/lib/sample-report";
 import type { Route } from "./+types/report";
@@ -22,15 +23,13 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ];
 }
 
-export async function loader({ params, request }: Route.LoaderArgs) {
+export async function clientLoader({ params, request }: Route.ClientLoaderArgs) {
   if (params.analysisId === "sample") return { report: sampleReport, isSample: true };
   if (!params.analysisId || !/^[1-9]\d*$/.test(params.analysisId)) {
     throw new Response("Report not found", { status: 404 });
   }
-  return {
-    report: await getReport(params.analysisId, request.signal, new URL(request.url).origin),
-    isSample: false,
-  };
+  try { return { report: await getReport(params.analysisId, request.signal), isSample: false }; }
+  catch (error) { if (error instanceof ApiError && error.status === 401) throw redirect(`/login?next=${encodeURIComponent(new URL(request.url).pathname)}`); throw error; }
 }
 
 export function shouldRevalidate({ currentUrl, nextUrl, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
