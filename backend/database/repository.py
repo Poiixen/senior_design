@@ -11,7 +11,14 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.models import Analysis, AnalysisReport, Dataset, DiagnosticResult, User
+from backend.models import (
+    Analysis,
+    AnalysisReport,
+    Comparison,
+    Dataset,
+    DiagnosticResult,
+    User,
+)
 
 
 def create_user(session: Session, *, email: str, password_hash: str) -> User:
@@ -208,3 +215,44 @@ def list_analysis_reports(session: Session) -> list[dict]:
         select(AnalysisReport).order_by(AnalysisReport.analysis_id.desc())
     )
     return [record.report for record in records]
+
+
+def save_comparison(
+    session: Session, *, analysis_id: int, comparison_type: str, result: dict
+) -> Comparison:
+    """Save a JSON-safe comparison result for an analysis."""
+    comparison = Comparison(
+        analysis_id=analysis_id, comparison_type=comparison_type, result=result
+    )
+    session.add(comparison)
+    session.flush()
+    return comparison
+
+
+def list_comparisons_for_user(
+    session: Session, analysis_id: int, user_id: int
+) -> list[Comparison]:
+    """Return the analysis's comparisons oldest first, if the user owns it."""
+    return list(session.scalars(
+        select(Comparison)
+        .join(Analysis, Comparison.analysis_id == Analysis.id)
+        .join(Dataset, Analysis.dataset_id == Dataset.id)
+        .where(Comparison.analysis_id == analysis_id, Dataset.user_id == user_id)
+        .order_by(Comparison.id)
+    ))
+
+
+def get_comparison_for_user(
+    session: Session, analysis_id: int, comparison_id: int, user_id: int
+) -> Optional[Comparison]:
+    """Return one comparison of the analysis only when the user owns it."""
+    return session.scalars(
+        select(Comparison)
+        .join(Analysis, Comparison.analysis_id == Analysis.id)
+        .join(Dataset, Analysis.dataset_id == Dataset.id)
+        .where(
+            Comparison.id == comparison_id,
+            Comparison.analysis_id == analysis_id,
+            Dataset.user_id == user_id,
+        )
+    ).first()

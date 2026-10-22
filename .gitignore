@@ -20,6 +20,9 @@ venv/
 *.sqlite3-wal
 *.sqlite3-shm
 
+# Uploaded dataset copies kept for column comparisons
+data/datasets/
+
 # Node
 node_modules/
 
