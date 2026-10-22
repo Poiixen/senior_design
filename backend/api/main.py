@@ -161,12 +161,26 @@ def parse_missing_values(raw_value: str) -> list[str]:
     return list(dict.fromkeys(item for item in value if item))
 
 
+def parse_has_header(raw_value: Optional[Union[str, bool]]) -> bool:
+    """Parse the form field used to indicate whether the first row is headers."""
+    if raw_value is None:
+        return True
+    if isinstance(raw_value, bool):
+        return raw_value
+    normalized = raw_value.strip().lower()
+    if normalized in {"", "1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise UploadError("has_header must be true or false.")
+
+
 @app.post("/api/analyze")
 async def analyze(
     request: Request,
     file: UploadFile = File(...),
     delimiter: str = Form(","),
-    has_header: bool = Form(True),
+    has_header: Optional[Union[str, bool]] = Form(None),
     missing_values: str = Form("[]"),
     user: User = Depends(get_current_user),
 ) -> dict:
@@ -178,6 +192,7 @@ async def analyze(
 
         if delimiter not in SUPPORTED_DELIMITERS:
             raise UploadError("Delimiter must be a comma, semicolon, tab, or pipe.")
+        has_header_value = parse_has_header(has_header)
         custom_missing_values = parse_missing_values(missing_values)
         effective_missing_values = list(
             dict.fromkeys([*STANDARD_MISSING_VALUES, *custom_missing_values])
@@ -196,7 +211,7 @@ async def analyze(
             if extension in {".csv", ".tsv"}:
                 loader_options = {
                     "sep": delimiter,
-                    "header": 0 if has_header else None,
+                    "header": 0 if has_header_value else None,
                     "na_values": effective_missing_values,
                     "keep_default_na": True,
                     "skipinitialspace": True,
@@ -221,7 +236,7 @@ async def analyze(
             df,
             parsing_options={
                 "delimiter": delimiter,
-                "has_header": has_header,
+                "has_header": has_header_value,
                 "missing_values": custom_missing_values,
             },
         )
