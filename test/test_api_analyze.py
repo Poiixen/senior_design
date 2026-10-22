@@ -128,12 +128,23 @@ def test_analyze_honors_header_delimiter_and_missing_markers(auth_client):
     }
     assert body["missing_values"] == [
         {
-            "column_name": "0",
+            "column_name": "column_1",
             "missing_count": 1,
             "missing_percentage": 50.0,
             "severity": "high",
         }
     ]
+    assert [profile["name"] for profile in body["column_profiles"]] == ["column_1", "column_2"]
+
+    renamed = auth_client.patch(
+        f"/api/reports/{body['analysis_id']}/column-names",
+        json={"column_display_names": {"column_1": "Person", "column_2": "Score"}},
+    )
+    assert renamed.status_code == 200
+    assert renamed.json()["column_display_names"] == {"column_1": "Person", "column_2": "Score"}
+    assert auth_client.get(f"/api/reports/{body['analysis_id']}").json()["column_display_names"] == {
+        "column_1": "Person", "column_2": "Score"
+    }
 
 
 def test_report_lookup_returns_not_found(auth_client):

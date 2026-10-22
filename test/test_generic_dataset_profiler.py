@@ -111,6 +111,20 @@ def test_numeric_column_statistics():
     assert details["q1"] == pytest.approx(30.0)
     assert details["q3"] == pytest.approx(50.0)
     assert details["max"] == pytest.approx(60.0)
+    assert details["histogram"]["included_values"] == 5
+    assert sum(details["histogram"]["counts"]) == 5
+    assert len(details["histogram"]["bin_edges"]) == len(details["histogram"]["counts"]) + 1
+
+
+def test_histogram_handles_constant_and_unusable_numeric_columns():
+    constant = profile_dataset(pd.DataFrame({"score": [4, 4, 4]}))["column_details"][0]["histogram"]
+    empty = profile_dataset(pd.DataFrame({
+        "score": pd.Series([None, float("inf")], dtype="float64")
+    }))["column_details"][0]["histogram"]
+
+    assert constant["counts"] == [3]
+    assert constant["bin_edges"][0] < 4 < constant["bin_edges"][1]
+    assert empty == {"included_values": 0, "bin_edges": [], "counts": []}
 
 
 def test_categorical_column_statistics():

@@ -218,8 +218,13 @@ async def analyze(
         except DatasetLoadError as exc:
             raise UploadError(str(exc)) from exc
 
-        # Headerless CSVs receive integer labels from pandas; report fields use strings.
-        df.columns = [str(column) for column in df.columns]
+        # Headerless files get stable identifiers; editable display names are
+        # stored separately so analysis and comparison references never break.
+        df.columns = (
+            [f"column_{index + 1}" for index in range(len(df.columns))]
+            if not has_header_value
+            else [str(column) for column in df.columns]
+        )
 
         analysis_service = request.app.state.analysis_service
         dataset = analysis_service.register_dataset(
@@ -306,6 +311,36 @@ def list_reports(request: Request, user: User = Depends(get_current_user)) -> di
             for report in reports
         ]
     }
+
+
+class ColumnDisplayNamesRequest(BaseModel):
+    column_display_names: dict[str, str]
+
+
+@app.patch("/api/reports/{analysis_id}/column-names")
+def update_column_display_names(
+    analysis_id: int,
+    payload: ColumnDisplayNamesRequest,
+    request: Request,
+    user: User = Depends(get_current_user),
+) -> dict:
+    """Save labels for a headerless report without renaming source columns."""
+    with session_scope(request.app.state.engine) as session:
+        report = repository.get_analysis_report_for_user(session, analysis_id, user.id)
+        if report is None:
+            raise HTTPException(status_code=404, detail=REPORT_NOT_FOUND)
+        if report.get("parsing_options", {}).get("has_header", True):
+            raise HTTPException(status_code=400, detail="Only headerless uploads support editable display names.")
+        available = {str(profile["name"]) for profile in report.get("column_profiles") or []}
+        if set(payload.column_display_names) != available:
+            raise HTTPException(status_code=400, detail="Provide one display name for every report column.")
+        cleaned = {key: value.strip() for key, value in payload.column_display_names.items()}
+        if any(not value or len(value) > 100 for value in cleaned.values()):
+            raise HTTPException(status_code=400, detail="Display names must contain 1 to 100 characters.")
+        normalized = [value.casefold() for value in cleaned.values()]
+        if len(normalized) != len(set(normalized)):
+            raise HTTPException(status_code=400, detail="Display names must be unique.")
+        return repository.update_report_column_display_names(session, analysis_id, cleaned)
 
 
 class CategoricalComparisonRequest(BaseModel):
