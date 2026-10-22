@@ -1,0 +1,40 @@
+{
+  "name": "education",
+  "dtype": "object",
+  "non_null_count": 127,
+  "missing_count": 1,
+  "missing_percentage": 0.78,
+  "unique_values": 3,
+  "unique_percentage": 2.36,
+  "most_common_value": "BA",
+  "most_common_count": 51,
+  "most_common_percentage": 40.16,
+  "distribution": {
+    "distinct_categories": 3,
+    "total_rows": 128,
+    "non_missing_rows": 127,
+    "missing_rows": 1,
+    "percentage_denominator": "non_missing_rows",
+    "categories": [
+      {
+        "label": "BA",
+        "count": 51,
+        "percentage": 40.16
+      },
+      {
+        "label": "HS",
+        "count": 51,
+        "percentage": 40.16
+      },
+      {
+        "label": "MA",
+        "count": 25,
+        "percentage": 19.69
+      }
+    ],
+    "categories_truncated": false,
+    "omitted_categories": 0,
+    "omitted_count": 0
+  },
+  "category": "categorical"
+}

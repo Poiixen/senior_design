@@ -1,0 +1,10 @@
+{
+  "request": "GET /api/reports/1/comparisons",
+  "response_shape": "{\"comparisons\": [<same objects as POST responses>, ...]}",
+  "comparison_ids": [
+    1,
+    2,
+    3,
+    4
+  ]
+}

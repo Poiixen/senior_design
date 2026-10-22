@@ -1,0 +1,134 @@
+{
+  "request": {
+    "comparison_type": "categorical_categorical",
+    "group_column": "education",
+    "outcome_column": "workclass"
+  },
+  "response": {
+    "comparison_id": 2,
+    "analysis_id": 1,
+    "created_at": "2026-10-22T02:07:38.612102Z",
+    "comparison_type": "categorical_categorical",
+    "design": "independent_groups",
+    "selection": {
+      "group_column": "education",
+      "outcome_column": "workclass"
+    },
+    "status": "ok",
+    "reason": null,
+    "rows": {
+      "total": 128,
+      "included": 127,
+      "excluded": 1,
+      "exclusion_reasons": {
+        "missing_group_value": 1,
+        "missing_outcome_value": 0
+      }
+    },
+    "group_categories": [
+      "BA",
+      "HS",
+      "MA"
+    ],
+    "outcome_categories": [
+      "Private",
+      "Self-emp",
+      "Never-worked"
+    ],
+    "counts": [
+      [
+        48,
+        3,
+        0
+      ],
+      [
+        48,
+        2,
+        1
+      ],
+      [
+        23,
+        2,
+        0
+      ]
+    ],
+    "group_totals": [
+      51,
+      51,
+      25
+    ],
+    "outcome_totals": [
+      119,
+      7,
+      1
+    ],
+    "row_percentages": [
+      [
+        94.12,
+        5.88,
+        0.0
+      ],
+      [
+        94.12,
+        3.92,
+        1.96
+      ],
+      [
+        92.0,
+        8.0,
+        0.0
+      ]
+    ],
+    "percentage_denominator": "group_total",
+    "test": {
+      "method": {
+        "key": "chi_square_independence",
+        "name": "Pearson's chi-square test of independence",
+        "evaluates": "Whether the distribution of the outcome column's categories differs between groups more than chance would explain.",
+        "null_hypothesis": "The two columns are independent.",
+        "assumptions": [
+          "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+          "Expected counts are large enough for the chi-square approximation: none below 1 and no more than 20% below 5."
+        ]
+      },
+      "status": "ok",
+      "reason": null,
+      "statistic": 2.0273125720876584,
+      "degrees_of_freedom": 4,
+      "p_value": 0.7307351705563483,
+      "continuity_correction": false,
+      "expected_counts": [
+        [
+          47.7874,
+          2.811,
+          0.4016
+        ],
+        [
+          47.7874,
+          2.811,
+          0.4016
+        ],
+        [
+          23.4252,
+          1.378,
+          0.1969
+        ]
+      ]
+    },
+    "association": {
+      "method": {
+        "key": "cramers_v",
+        "name": "Cramér's V",
+        "evaluates": "Strength of association from 0 (none) to 1 (one column determines the other). It does not indicate direction or cause."
+      },
+      "status": "ok",
+      "reason": null,
+      "value": 0.08933949607760405
+    },
+    "warnings": [
+      "At least one expected count is below 1, so the chi-square p-value may be unreliable. Consider combining rare categories.",
+      "6 of 9 cells (67%) have expected counts below 5, so the chi-square p-value may be unreliable. Consider combining rare categories."
+    ],
+    "note": "These results describe how categories co-occur in this dataset. An association does not show that one column causes the other and is not, by itself, evidence of bias."
+  }
+}

@@ -90,8 +90,13 @@ engine = create_sqlite_engine()      # or ":memory:"
 initialize_database(engine)          # adds missing tables, keeps existing rows
 ```
 
-Tables: `datasets`, `analyses`, `diagnostic_results`. Raw rows are never
-stored, only metadata and findings. Group writes with `session_scope(engine)`.
+Tables: `datasets`, `analyses`, `diagnostic_results`, `analysis_reports`,
+`comparisons`. The database never stores raw rows, only metadata and findings.
+Group writes with `session_scope(engine)`.
+
+Column comparisons need the rows again, so each upload's parsed dataset is also
+saved as `data/datasets/<dataset_id>.parquet` (a `datasets` folder beside the
+database; override with `DATASET_STORAGE_DIR`). The folder is git-ignored.
 
 ## API
 
@@ -99,7 +104,9 @@ stored, only metadata and findings. Group writes with `session_scope(engine)`.
 uvicorn backend.api.main:app --reload
 ```
 
-`GET /health`, `POST /api/analyze`, and `GET /api/reports/{analysis_id}`.
+`GET /health`, `POST /api/analyze`, `GET /api/reports/{analysis_id}`, and the
+column comparison endpoints under `/api/reports/{analysis_id}/comparisons`
+(see [docs/comparisons.md](docs/comparisons.md)).
 Interactive API docs are available at `http://127.0.0.1:8000/docs`.
 
 The upload endpoint accepts multipart form fields:
@@ -113,8 +120,9 @@ The upload endpoint accepts multipart form fields:
 
 Successful uploads return the complete report, including `analysis_id`. The
 frontend opens `/reports/{analysis_id}` and retrieves the saved report from the
-API. Reports survive page refreshes and backend restarts. Raw CSV rows are not
-retained; only metadata and diagnostic summaries are saved.
+API. Reports survive page refreshes and backend restarts. The database keeps
+only metadata and diagnostic summaries; the parsed rows are kept on disk for
+column comparisons (see [Database](#database)).
 
 ## Frontend
 

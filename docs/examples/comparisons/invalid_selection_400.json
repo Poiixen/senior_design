@@ -1,0 +1,11 @@
+{
+  "request": {
+    "comparison_type": "categorical_categorical",
+    "group_column": "education",
+    "outcome_column": "age"
+  },
+  "status_code": 400,
+  "response": {
+    "detail": "Column 'age' is numeric (float64), so it cannot be used as a categorical column."
+  }
+}
