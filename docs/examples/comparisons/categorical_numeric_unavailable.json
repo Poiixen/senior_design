@@ -1,0 +1,90 @@
+{
+  "request": {
+    "comparison_type": "categorical_numeric",
+    "group_column": "group",
+    "value_column": "score"
+  },
+  "response": {
+    "comparison_id": 5,
+    "analysis_id": 2,
+    "created_at": "2026-10-22T02:07:38.751914Z",
+    "comparison_type": "categorical_numeric",
+    "design": "independent_groups",
+    "selection": {
+      "group_column": "group",
+      "value_column": "score"
+    },
+    "status": "ok",
+    "reason": null,
+    "rows": {
+      "total": 3,
+      "included": 3,
+      "excluded": 0,
+      "exclusion_reasons": {
+        "missing_group_value": 0,
+        "missing_or_non_finite_value": 0
+      }
+    },
+    "overall": {
+      "count": 3,
+      "mean": 2.0,
+      "median": 2.0,
+      "std_dev": 1.0,
+      "min": 1.0,
+      "q1": 1.5,
+      "q3": 2.5,
+      "max": 3.0
+    },
+    "groups": [
+      {
+        "label": "a",
+        "count": 2,
+        "mean": 1.5,
+        "median": 1.5,
+        "std_dev": 0.7071067811865476,
+        "min": 1.0,
+        "q1": 1.25,
+        "q3": 1.75,
+        "max": 2.0
+      },
+      {
+        "label": "b",
+        "count": 1,
+        "mean": 3.0,
+        "median": 3.0,
+        "std_dev": null,
+        "min": 3.0,
+        "q1": 3.0,
+        "q3": 3.0,
+        "max": 3.0
+      }
+    ],
+    "test": {
+      "method": {
+        "key": "welch_t_test",
+        "name": "Welch's independent-samples t-test",
+        "evaluates": "Whether the mean of the measurement differs between the two groups.",
+        "null_hypothesis": "The two groups have equal population means.",
+        "assumptions": [
+          "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+          "Each group's mean is approximately normally distributed: the values are roughly normal, or the group is large enough for the central limit theorem to apply. Strong skew or outliers in small groups make the p-value unreliable.",
+          "The groups do not need equal variances."
+        ]
+      },
+      "status": "unavailable",
+      "reason": "Welch's t-test needs at least two values in each group; 'b' has fewer.",
+      "group_sizes": [
+        {
+          "label": "a",
+          "count": 2
+        },
+        {
+          "label": "b",
+          "count": 1
+        }
+      ]
+    },
+    "warnings": [],
+    "note": "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported."
+  }
+}

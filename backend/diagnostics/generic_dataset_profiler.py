@@ -2,6 +2,8 @@ import math
 import numpy as np
 import pandas as pd
 
+from backend.diagnostics.categorical_comparison import category_distribution
+from backend.diagnostics.comparison_common import ordered_counts
 from backend.diagnostics.duplicate_detection import detect_duplicates
 from backend.diagnostics.missing_value_detection import detect_missing_values
 
@@ -104,7 +106,8 @@ def profile_dataset(df: pd.DataFrame) -> dict:
 
             if not valid_column.empty:
 
-                counts = valid_column.value_counts()
+                # Same order as the distribution: ties go to the first label.
+                counts = ordered_counts(valid_column)
 
                 most_common_value = counts.index[0]
                 most_common_count = int(counts.iloc[0])
@@ -128,7 +131,8 @@ def profile_dataset(df: pd.DataFrame) -> dict:
             details.update({
                 "most_common_value": most_common_value,
                 "most_common_count": most_common_count,
-                "most_common_percentage": most_common_percentage
+                "most_common_percentage": most_common_percentage,
+                "distribution": category_distribution(column)
             })
 
         details["category"] = inferred_category

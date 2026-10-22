@@ -5,6 +5,8 @@ pandas>=2.2,<3
 openpyxl>=3.1
 numpy
 scipy
+# Stores uploaded datasets as Parquet for column comparisons.
+pyarrow
 scikit-learn
 fastapi
 uvicorn
