@@ -22,6 +22,8 @@ export class ApiError extends Error {
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
 
+export interface AuthUser { id: number; email: string }
+
 function detailMessage(body: unknown): string | undefined {
   if (!body || typeof body !== "object" || !("detail" in body)) return;
   if (typeof body.detail === "string") return body.detail.trim() || undefined;
@@ -38,7 +40,7 @@ async function requestReport(path: string, init?: RequestInit): Promise<Analysis
   let response: Response;
   try {
     const url = /^https?:\/\//i.test(path) ? path : `${apiBase}${path}`;
-    response = await fetch(url, init);
+    response = await fetch(url, { credentials: "include", ...init });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
     throw new ApiError("We couldn't reach the analysis service. Check that the backend is running, then try again.");
@@ -78,7 +80,7 @@ export async function getReports(signal?: AbortSignal, origin?: string): Promise
   const url = base ? new URL(path, base).toString() : path;
   let response: Response;
   try {
-    response = await fetch(url, { signal });
+    response = await fetch(url, { signal, credentials: "include" });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw error;
     throw new ApiError("We couldn't retrieve saved reports. Check that the backend is running, then try again.");
@@ -93,3 +95,31 @@ export async function getReports(signal?: AbortSignal, origin?: string): Promise
   }
   return body.reports as ReportSummary[];
 }
+
+async function authRequest(path: string, init?: RequestInit): Promise<AuthUser | null> {
+  let response: Response;
+  try {
+    response = await fetch(`${apiBase}/api/auth/${path}`, { credentials: "include", ...init });
+  } catch {
+    throw new ApiError("We couldn't reach the authentication service. Check that the backend is running.");
+  }
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok) throw new ApiError(detailMessage(body) ?? "The account request could not be completed.", response.status);
+  if (path === "logout") return null;
+  if (!body || typeof body !== "object" || !("id" in body) || !("email" in body) ||
+      typeof body.id !== "number" || typeof body.email !== "string") {
+    throw new ApiError("The authentication service returned an invalid response.", response.status);
+  }
+  return body as AuthUser;
+}
+
+const jsonRequest = (email: string, password: string): RequestInit => ({
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ email, password }),
+});
+
+export function registerUser(email: string, password: string) { return authRequest("register", jsonRequest(email, password)) as Promise<AuthUser>; }
+export function loginUser(email: string, password: string) { return authRequest("login", jsonRequest(email, password)) as Promise<AuthUser>; }
+export function logoutUser() { return authRequest("logout", { method: "POST" }); }
+export function getCurrentUser() { return authRequest("me") as Promise<AuthUser>; }

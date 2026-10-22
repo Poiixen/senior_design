@@ -8,7 +8,7 @@ from backend.database.connection import session_scope
 from backend.services import analysis_service as service_module
 
 
-def test_analyze_returns_expected_shape(client):
+def test_analyze_returns_expected_shape(auth_client):
     csv_content = (
         "name,age\n"
         "Alice,20\n"
@@ -16,7 +16,7 @@ def test_analyze_returns_expected_shape(client):
         "Alice,20\n"
     )
 
-    response = client.post(
+    response = auth_client.post(
         "/api/analyze",
         files={"file": ("data.csv", csv_content, "text/csv")},
     )
@@ -41,11 +41,11 @@ def test_analyze_returns_expected_shape(client):
     assert body["validation"]["valid"] is True
     assert isinstance(body["diagnostics"], list)
 
-    saved_response = client.get(f"/api/reports/{body['analysis_id']}")
+    saved_response = auth_client.get(f"/api/reports/{body['analysis_id']}")
     assert saved_response.status_code == 200
     assert saved_response.json() == body
 
-    list_response = client.get("/api/reports")
+    list_response = auth_client.get("/api/reports")
     assert list_response.status_code == 200
     listed = list_response.json()["reports"]
     assert listed[0]["analysis_id"] == body["analysis_id"]
@@ -53,7 +53,7 @@ def test_analyze_returns_expected_shape(client):
     assert "missing_values" not in listed[0]
 
 
-def test_analyze_reports_missing_values_and_duplicates(client):
+def test_analyze_reports_missing_values_and_duplicates(auth_client):
     csv_content = (
         "name,age\n"
         "Alice,20\n"
@@ -61,7 +61,7 @@ def test_analyze_reports_missing_values_and_duplicates(client):
         "Alice,20\n"
     )
 
-    response = client.post(
+    response = auth_client.post(
         "/api/analyze",
         files={"file": ("data.csv", csv_content, "text/csv")},
     )
@@ -74,8 +74,8 @@ def test_analyze_reports_missing_values_and_duplicates(client):
     assert body["summary"]["issues_detected"] == len(body["diagnostics"])
 
 
-def test_analyze_rejects_empty_csv(client):
-    response = client.post(
+def test_analyze_rejects_empty_csv(auth_client):
+    response = auth_client.post(
         "/api/analyze",
         files={"file": ("empty.csv", "", "text/csv")},
     )
@@ -83,8 +83,32 @@ def test_analyze_rejects_empty_csv(client):
     assert response.status_code == 400
 
 
-def test_analyze_honors_header_delimiter_and_missing_markers(client):
-    response = client.post(
+def test_analyze_accepts_tsv_and_json(auth_client):
+    tsv = auth_client.post(
+        "/api/analyze",
+        files={"file": ("data.tsv", "name\tage\nAlice\t20\n", "text/tab-separated-values")},
+    )
+    assert tsv.status_code == 200
+    assert tsv.json()["dataset"] == {"rows": 1, "columns": 2}
+
+    json_response = auth_client.post(
+        "/api/analyze",
+        files={"file": ("data.json", '[{"name":"Alice","age":20}]', "application/json")},
+    )
+    assert json_response.status_code == 200
+    assert json_response.json()["filename"] == "data.json"
+
+
+def test_analyze_rejects_unsupported_extension(auth_client):
+    response = auth_client.post(
+        "/api/analyze", files={"file": ("data.txt", "name,age\nAlice,20", "text/plain")}
+    )
+    assert response.status_code == 400
+    assert "Unsupported file format" in response.json()["detail"]
+
+
+def test_analyze_honors_header_delimiter_and_missing_markers(auth_client):
+    response = auth_client.post(
         "/api/analyze",
         files={"file": ("data.csv", "Alice;10\n ?;20\n", "text/csv")},
         data={
@@ -112,8 +136,8 @@ def test_analyze_honors_header_delimiter_and_missing_markers(client):
     ]
 
 
-def test_report_lookup_returns_not_found(client):
-    response = client.get("/api/reports/999999999")
+def test_report_lookup_returns_not_found(auth_client):
+    response = auth_client.get("/api/reports/999999999")
 
     assert response.status_code == 404
 
@@ -121,12 +145,12 @@ def test_report_lookup_returns_not_found(client):
 MIXED_CSV = "name,age\nAlice,20\nBob,\nAlice,20\n"
 
 
-def _post(client, content=MIXED_CSV):
-    return client.post("/api/analyze", files={"file": ("data.csv", content, "text/csv")})
+def _post(auth_client, content=MIXED_CSV):
+    return auth_client.post("/api/analyze", files={"file": ("data.csv", content, "text/csv")})
 
 
-def test_report_adds_versioned_ids_and_findings_to_the_frontend_shape(client):
-    body = _post(client).json()
+def test_report_adds_versioned_ids_and_findings_to_the_frontend_shape(auth_client):
+    body = _post(auth_client).json()
 
     assert body["schema_version"] == 1
     assert isinstance(body["dataset_id"], int)
@@ -137,7 +161,7 @@ def test_report_adds_versioned_ids_and_findings_to_the_frontend_shape(client):
     assert findings[("duplicates", None)]["metadata"]["duplicate_count"] == 1
 
 
-def test_analysis_runs_each_diagnostic_once_per_upload(client, monkeypatch):
+def test_analysis_runs_each_diagnostic_once_per_upload(auth_client, monkeypatch):
     calls = []
     original = service_module.profile_dataset
 
@@ -147,16 +171,16 @@ def test_analysis_runs_each_diagnostic_once_per_upload(client, monkeypatch):
 
     monkeypatch.setattr(service_module, "profile_dataset", counted)
 
-    assert _post(client).status_code == 200
+    assert _post(auth_client).status_code == 200
     assert len(calls) == 1
 
 
-def test_failed_run_has_no_report_and_returns_conflict(client, api_engine, monkeypatch):
+def test_failed_run_has_no_report_and_returns_conflict(auth_client, api_engine, monkeypatch):
     def fail(frame):
         raise RuntimeError("Detector failed")
 
     monkeypatch.setattr(service_module, "profile_dataset", fail)
-    assert _post(client).status_code == 500
+    assert _post(auth_client).status_code == 500
 
     with session_scope(api_engine) as session:
         dataset = repository.list_datasets(session)[-1]
@@ -164,7 +188,7 @@ def test_failed_run_has_no_report_and_returns_conflict(client, api_engine, monke
         assert analysis.status == "failed"
         assert repository.list_diagnostic_results(session, analysis.id) == []
 
-    response = client.get(f"/api/reports/{analysis.id}")
+    response = auth_client.get(f"/api/reports/{analysis.id}")
     assert response.status_code == 409
     assert "failed" in response.json()["detail"]
 

@@ -2,6 +2,7 @@
 # checks in the ingestion and profiling code stop matching. Pin until the
 # code is updated for pandas 3.
 pandas>=2.2,<3
+openpyxl>=3.1
 numpy
 scipy
 scikit-learn
@@ -12,3 +13,5 @@ sqlalchemy>=2.0
 pytest
 httpx
 python-multipart
+argon2-cffi
+itsdangerous

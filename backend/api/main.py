@@ -1,15 +1,18 @@
 import json
 import os
+import secrets
 import tempfile
 import traceback
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional, Union
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.engine import Engine
+from starlette.middleware.sessions import SessionMiddleware
 
+from backend.api.auth import get_current_user, router as auth_router
 from backend.database import repository
 from backend.database.connection import (
     DEFAULT_DATABASE_PATH,
@@ -17,7 +20,8 @@ from backend.database.connection import (
     initialize_database,
     session_scope,
 )
-from backend.ingestion.csv_loader import CSVLoadError, load_csv
+from backend.ingestion.dataset_loader import DatasetLoadError, SUPPORTED_FILE_EXTENSIONS, load_dataset
+from backend.models import User
 from backend.services.analysis_service import AnalysisService
 
 
@@ -60,13 +64,27 @@ allowed_origins = [
     ).split(",")
     if origin.strip()
 ]
+# Signs the session cookie. Without SECRET_KEY a random key is used, so
+# logins reset whenever the server restarts; set it for stable sessions.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SECRET_KEY") or secrets.token_urlsafe(32),
+    same_site="lax",
+    https_only=os.getenv("SESSION_COOKIE_SECURE", "").lower() in ("1", "true"),
+    max_age=60 * 60 * 24 * 7,
+)
+
 if allowed_origins:
+    # Added last so it is outermost and answers preflight before the session.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
         allow_methods=["GET", "POST"],
         allow_headers=["*"],
+        allow_credentials=True,
     )
+
+app.include_router(auth_router)
 
 # Configuration: Maximum upload size in bytes (100 MB default)
 MAX_UPLOAD_SIZE = int(os.getenv("MAX_UPLOAD_SIZE", 100 * 1024 * 1024))
@@ -95,8 +113,8 @@ async def read_upload_with_limit(
     if not file.filename:
         raise UploadError("No filename provided.")
 
-    if not file.filename.lower().endswith(".csv"):
-        raise UploadError("File must be a CSV (.csv extension required).")
+    if Path(file.filename).suffix.lower() not in SUPPORTED_FILE_EXTENSIONS:
+        raise UploadError("Unsupported file format. Choose a CSV, TSV, XLSX, or JSON file.")
 
     contents = bytearray()
     while True:
@@ -135,6 +153,7 @@ async def analyze(
     delimiter: str = Form(","),
     has_header: bool = Form(True),
     missing_values: str = Form("[]"),
+    user: User = Depends(get_current_user),
 ) -> dict:
     tmp_path: Optional[str] = None
 
@@ -149,43 +168,38 @@ async def analyze(
             dict.fromkeys([*STANDARD_MISSING_VALUES, *custom_missing_values])
         )
 
-        # Write to temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
+        filename = Path(file.filename or "dataset.csv").name
+        extension = Path(filename).suffix.lower()
+        # Preserve the source suffix because spreadsheet readers rely on it.
+        with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as tmp:
             tmp.write(contents)
             tmp_path = tmp.name
 
         # Load and analyze
         try:
-            df = load_csv(
-                tmp_path,
-                sep=delimiter,
-                header=0 if has_header else None,
-                na_values=effective_missing_values,
-                keep_default_na=True,
-                # Common CSV exports (including UCI Adult) put a space after
-                # delimiters. Ignore that formatting whitespace so markers
-                # such as "?" match values written as " ?".
-                skipinitialspace=True,
-            )
-        except CSVLoadError as exc:
-            raise UploadError(
-                "The CSV file could not be parsed. Check its delimiter and formatting."
-            ) from exc
-        except UnicodeDecodeError:
-            raise UploadError(
-                "File encoding is not supported. Please use UTF-8 or ASCII."
-            )
+            loader_options = {}
+            if extension in {".csv", ".tsv"}:
+                loader_options = {
+                    "sep": delimiter,
+                    "header": 0 if has_header else None,
+                    "na_values": effective_missing_values,
+                    "keep_default_na": True,
+                    "skipinitialspace": True,
+                }
+            df = load_dataset(tmp_path, filename, **loader_options)
+        except DatasetLoadError as exc:
+            raise UploadError(str(exc)) from exc
 
         # Headerless CSVs receive integer labels from pandas; report fields use strings.
         df.columns = [str(column) for column in df.columns]
 
-        filename = Path(file.filename or "dataset.csv").name
         analysis_service = request.app.state.analysis_service
         dataset = analysis_service.register_dataset(
             df,
             name=Path(filename).stem or filename,
             source="upload",
             file_name=filename,
+            user_id=user.id,
         )
         analysis = analysis_service.run_analysis(
             dataset.id,
@@ -220,10 +234,16 @@ async def analyze(
 
 
 @app.get("/api/reports/{analysis_id}")
-def get_report(analysis_id: int, request: Request) -> dict:
+def get_report(
+    analysis_id: int, request: Request, user: User = Depends(get_current_user)
+) -> dict:
     with session_scope(request.app.state.engine) as session:
-        report = repository.get_analysis_report(session, analysis_id)
-        analysis = None if report else repository.get_analysis(session, analysis_id)
+        report = repository.get_analysis_report_for_user(session, analysis_id, user.id)
+        analysis = (
+            None
+            if report
+            else repository.get_analysis_for_user(session, analysis_id, user.id)
+        )
     if report is not None:
         return report
     if analysis is not None and analysis.status == "failed":
@@ -240,9 +260,9 @@ def get_report(analysis_id: int, request: Request) -> dict:
 
 
 @app.get("/api/reports")
-def list_reports(request: Request) -> dict:
+def list_reports(request: Request, user: User = Depends(get_current_user)) -> dict:
     with session_scope(request.app.state.engine) as session:
-        reports = repository.list_analysis_reports(session)
+        reports = repository.list_analysis_reports_for_user(session, user.id)
 
     return {
         "reports": [

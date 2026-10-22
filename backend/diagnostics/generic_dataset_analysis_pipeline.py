@@ -5,6 +5,7 @@ from backend.diagnostics.generic_dataset_profiler import profile_dataset
 from backend.diagnostics.missing_value_detection import detect_missing_values
 from backend.diagnostics.duplicate_detection import detect_duplicates
 from backend.diagnostics.iqr_outlier_detection import detect_numeric_outliers
+from backend.diagnostics.column_quality_detection import detect_column_quality
 
 
 def analyze_dataset(df: pd.DataFrame) -> dict:
@@ -21,6 +22,7 @@ def analyze_dataset(df: pd.DataFrame) -> dict:
     missing_values = detect_missing_values(df)
     duplicates = detect_duplicates(df)
     outliers = detect_numeric_outliers(df)
+    column_quality = detect_column_quality(df)
 
     return {
         "profile": profile,
@@ -36,6 +38,10 @@ def analyze_dataset(df: pd.DataFrame) -> dict:
             {
                 "type": "outliers",
                 "results": outliers
+            },
+            {
+                "type": "column_quality",
+                "results": column_quality
             }
         ]
     }
