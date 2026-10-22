@@ -68,6 +68,15 @@ Ctrl+C.
 bash ./run-all.sh
 ```
 
+Both servers live-reload saved code changes. The PowerShell launcher enables
+polling automatically for reliable Windows file watching. If Bash is running
+from WSL, a mounted drive, or a synced folder and misses changes, enable the
+same polling mode:
+
+```bash
+DEV_USE_POLLING=1 bash ./run-all.sh
+```
+
 If a terminal closes unexpectedly or either development port remains busy,
 run the cleanup script before restarting:
 

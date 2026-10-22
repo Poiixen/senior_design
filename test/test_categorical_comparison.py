@@ -193,6 +193,22 @@ def test_too_many_categories_is_unavailable_with_reason():
     assert "at most 4" in result["reason"]
 
 
+def test_large_contingency_table_warns():
+    size = 51
+    df = pd.DataFrame({"group": [f"g{i}" for i in range(size)], "outcome": [f"o{i}" for i in range(size)]})
+    result = compare_categorical(df, "group", "outcome")
+    assert result["status"] == "ok"
+    assert any("2,601 cells" in warning for warning in result["warnings"])
+
+
+def test_contingency_cell_limit_is_unavailable():
+    df = pd.DataFrame({"group": [f"g{i}" for i in range(101)], "outcome": [f"o{i % 100}" for i in range(101)]})
+    result = compare_categorical(df, "group", "outcome", max_categories=200)
+    assert result["status"] == "unavailable"
+    assert "10,100 cells" in result["reason"]
+    assert "at most 10,000" in result["reason"]
+
+
 def test_boolean_columns_keep_their_labels():
     df = pd.DataFrame({"flag": [True, False, True, True], "outcome": list("xyxy")})
 

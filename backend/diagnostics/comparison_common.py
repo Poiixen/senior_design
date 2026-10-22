@@ -5,7 +5,9 @@ from pandas.api.types import is_bool_dtype, is_numeric_dtype
 
 # Comparisons refuse columns with more categories than this among the rows
 # they use, so contingency tables and group summaries stay readable.
-MAX_COMPARISON_CATEGORIES = 50
+MAX_COMPARISON_CATEGORIES = 100
+MAX_CONTINGENCY_CELLS = 10_000
+WARN_CONTINGENCY_CELLS = 2_500
 
 DESIGN_NOTE = (
     "Each row is treated as an independent observation. Paired or repeated "
