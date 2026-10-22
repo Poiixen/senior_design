@@ -161,12 +161,10 @@ def parse_missing_values(raw_value: str) -> list[str]:
     return list(dict.fromkeys(item for item in value if item))
 
 
-def parse_has_header(raw_value: Optional[Union[str, bool]]) -> bool:
+def parse_has_header(raw_value: Optional[str]) -> bool:
     """Parse the form field used to indicate whether the first row is headers."""
     if raw_value is None:
         return True
-    if isinstance(raw_value, bool):
-        return raw_value
     normalized = raw_value.strip().lower()
     if normalized in {"", "1", "true", "yes", "on"}:
         return True
@@ -180,7 +178,7 @@ async def analyze(
     request: Request,
     file: UploadFile = File(...),
     delimiter: str = Form(","),
-    has_header: Optional[Union[str, bool]] = Form(None),
+    has_header: Optional[str] = Form(None),
     missing_values: str = Form("[]"),
     user: User = Depends(get_current_user),
 ) -> dict:
