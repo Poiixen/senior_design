@@ -1,4 +1,4 @@
-# Team Science
+# Team Science 
 
 Dataset-agnostic data quality pipeline. Takes a tabular dataset, validates its
 structure, profiles the columns, runs diagnostics for missing values,
@@ -401,3 +401,29 @@ Return `DiagnosticResult` (`diagnostic`, `column`, `severity`, `value`,
 `message`, `recommendation`, `metadata`) so findings persist and serialize
 uniformly. Add it to `profile_dataset()` if it belongs in the standard
 profile. Tests must pass without the Adult dataset.
+
+## How to Read Your Report
+
+### Missing values
+
+Missing values are empty or recognized missing entries in your dataset. The report shows how many were found in each column.
+
+### Duplicate rows
+
+Duplicate rows contain the same values across the columns checked by the analysis. Review them before deciding whether to remove them.
+
+### Numeric outliers
+
+Numeric outliers are values flagged by the current IQR method. A flagged value may be unusual without being incorrect.
+
+### Column details
+
+Expand a column’s details to view its available statistics and learn more about its values.
+
+### Correlation
+
+Correlation describes how two numeric columns vary together. It does not prove that one causes the other.
+
+### Analysis software
+
+The application uses Python and pandas for its data analysis.
