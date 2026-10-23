@@ -15,6 +15,8 @@ from scipy.stats import chi2_contingency
 from backend.diagnostics.comparison_common import (
     DESIGN_NOTE,
     MAX_COMPARISON_CATEGORIES,
+    MAX_CONTINGENCY_CELLS,
+    WARN_CONTINGENCY_CELLS,
     ComparisonError,
     json_label,
     ordered_counts,
@@ -119,6 +121,8 @@ def compare_categorical(
     group_column: str,
     outcome_column: str,
     max_categories: int = MAX_COMPARISON_CATEGORIES,
+    max_cells: int = MAX_CONTINGENCY_CELLS,
+    warn_cells: int = WARN_CONTINGENCY_CELLS,
 ) -> dict:
     """Cross-tabulate two categorical columns and test their independence.
 
@@ -189,6 +193,21 @@ def compare_categorical(
                 "column with fewer categories or combine rare categories first."
             )
 
+    cell_count = len(group_order) * len(outcome_order)
+    if cell_count > max_cells:
+        return unavailable(
+            f"This comparison would create {cell_count:,} cells "
+            f"({len(group_order)} × {len(outcome_order)} categories); comparisons "
+            f"support at most {max_cells:,} cells. Choose columns with fewer "
+            "categories or combine rare categories first."
+        )
+    if cell_count > warn_cells:
+        result["warnings"].append(
+            f"This is a large contingency table with {cell_count:,} cells "
+            f"({len(group_order)} × {len(outcome_order)} categories). It may be "
+            "difficult to read and sparse; review the expected-frequency warnings."
+        )
+
     table = (
         pd.crosstab(groups, outcomes)
         .reindex(index=group_order, columns=outcome_order, fill_value=0)
@@ -236,5 +255,5 @@ def compare_categorical(
         "reason": None,
         "value": min(1.0, float(cramers_v)),
     }
-    result["warnings"] = _expected_count_warnings(expected)
+    result["warnings"].extend(_expected_count_warnings(expected))
     return result

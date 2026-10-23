@@ -25,6 +25,34 @@ def safe_number(value):
     return number
 
 
+def numeric_histogram(values: pd.Series, max_bins: int = 12) -> dict:
+    """Return a compact, JSON-safe histogram for usable finite values."""
+
+    usable = pd.to_numeric(values, errors="coerce").replace(
+        [np.inf, -np.inf], np.nan
+    ).dropna().astype(float)
+    included = int(len(usable))
+    if included == 0:
+        return {"included_values": 0, "bin_edges": [], "counts": []}
+
+    minimum = float(usable.min())
+    maximum = float(usable.max())
+    if minimum == maximum:
+        # A non-zero width keeps a constant column drawable and its label honest.
+        padding = max(abs(minimum) * 0.01, 0.5)
+        edges = np.array([minimum - padding, maximum + padding])
+    else:
+        bin_count = min(max_bins, max(1, int(math.ceil(math.sqrt(included)))))
+        edges = np.linspace(minimum, maximum, bin_count + 1)
+
+    counts, edges = np.histogram(usable.to_numpy(), bins=edges)
+    return {
+        "included_values": included,
+        "bin_edges": [float(edge) for edge in edges],
+        "counts": [int(count) for count in counts],
+    }
+
+
 def profile_dataset(df: pd.DataFrame) -> dict:
 
     # Column types
@@ -93,7 +121,8 @@ def profile_dataset(df: pd.DataFrame) -> dict:
                 "min": safe_number(valid_column.min()),
                 "q1": safe_number(valid_column.quantile(0.25)),
                 "q3": safe_number(valid_column.quantile(0.75)),
-                "max": safe_number(valid_column.max())
+                "max": safe_number(valid_column.max()),
+                "histogram": numeric_histogram(valid_column)
             })
 
         # Categorical columns

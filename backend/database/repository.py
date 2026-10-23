@@ -197,6 +197,20 @@ def get_analysis_report_for_user(
     return record.report if record is not None else None
 
 
+def update_report_column_display_names(
+    session: Session, analysis_id: int, names: dict[str, str]
+) -> dict:
+    """Replace display labels while preserving the report's source identifiers."""
+    record = session.get(AnalysisReport, analysis_id)
+    if record is None:
+        raise ValueError(f"Analysis report {analysis_id} does not exist")
+    updated = dict(record.report)
+    updated["column_display_names"] = dict(names)
+    record.report = updated
+    session.flush()
+    return updated
+
+
 def list_analysis_reports_for_user(session: Session, user_id: int) -> list[dict]:
     """Return the user's saved report snapshots newest first."""
     records = session.scalars(

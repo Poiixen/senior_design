@@ -8,6 +8,7 @@ from scipy.stats import kruskal, ttest_ind
 from backend.diagnostics.comparison_common import ComparisonError
 from backend.diagnostics.numeric_group_comparison import compare_numeric_across_groups
 
+
 TWO_GROUPS = pd.DataFrame({
     "income": ["<=50K"] * 6 + [">50K"] * 4,
     "age": [22, 25, 31, 28, 40, 19, 45, 52, 38, 60],

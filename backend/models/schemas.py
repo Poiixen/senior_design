@@ -135,6 +135,7 @@ class AnalysisReport(_FiniteModel):
     dataset: ReportDataset
     summary: ReportSummary
     parsing_options: ParsingOptions
+    column_display_names: dict[str, str] = Field(default_factory=dict)
     missing_values: list[MissingValueResult]
     outliers: list[OutlierResult]
     column_profiles: Optional[list[dict[str, Any]]] = None

@@ -7,6 +7,8 @@ import {
   type ShouldRevalidateFunctionArgs,
 } from "react-router";
 import { ColumnProfileTable } from "~/components/column-profile-table";
+import { CategoricalComparisonPanel } from "~/components/categorical-comparison";
+import { ReportSuggestions } from "~/components/report-suggestions";
 import { MissingValueTable, OutlierTable } from "~/components/diagnostic-tables";
 import { DuplicateAnalysis } from "~/components/duplicate-analysis";
 import { Icon } from "~/components/icon";
@@ -164,8 +166,8 @@ export default function Report({ loaderData }: Route.ComponentProps) {
         ))}
       </nav>
 
-      {view === "summary" && <Summary report={report} />}
-      {view === "columns" && <ColumnProfileTable report={report} />}
+      {view === "summary" && <><Summary report={report} /><ReportSuggestions analysisId={report.analysis_id} disabled={isSample} /></>}
+      {view === "columns" && <div className="report-columns-view"><ColumnProfileTable report={report} /><CategoricalComparisonPanel report={report} disabled={isSample} /></div>}
       {view === "missing" && <MissingValueTable report={report} />}
       {view === "duplicates" && <DuplicateAnalysis report={report} />}
       {view === "outliers" && <OutlierTable report={report} />}

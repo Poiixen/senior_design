@@ -24,6 +24,59 @@ const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
 
 export interface AuthUser { id: number; email: string }
 
+export interface ComparisonMethod {
+  key: string;
+  name: string;
+  evaluates: string;
+  null_hypothesis?: string;
+  assumptions?: string[];
+}
+
+export interface CategoricalComparison {
+  comparison_id: number;
+  analysis_id: number;
+  created_at: string;
+  comparison_type: "categorical_categorical";
+  design: "independent_groups";
+  selection: { group_column: string; outcome_column: string };
+  status: "ok" | "unavailable";
+  reason: string | null;
+  rows: {
+    total: number; included: number; excluded: number;
+    exclusion_reasons: { missing_group_value: number; missing_outcome_value: number };
+  };
+  group_categories?: Array<string | number | boolean>;
+  outcome_categories?: Array<string | number | boolean>;
+  counts?: number[][];
+  group_totals?: number[];
+  outcome_totals?: number[];
+  row_percentages?: number[][];
+  percentage_denominator?: "group_total";
+  test: {
+    method: ComparisonMethod; status: "ok" | "unavailable"; reason: string | null;
+    statistic?: number; degrees_of_freedom?: number; p_value?: number;
+  };
+  association: {
+    method: ComparisonMethod; status: "ok" | "unavailable"; reason: string | null; value?: number;
+  };
+  warnings: string[];
+  note: string;
+}
+
+export interface ReportSuggestion {
+  title: string;
+  affected_columns: string[];
+  explanation: string;
+  evidence: string[];
+  next_steps: string[];
+}
+
+export interface SuggestionResponse {
+  analysis_id: number;
+  source: "ai" | "fallback";
+  suggestions: ReportSuggestion[];
+}
+
 function detailMessage(body: unknown): string | undefined {
   if (!body || typeof body !== "object" || !("detail" in body)) return;
   if (typeof body.detail === "string") return body.detail.trim() || undefined;
@@ -58,6 +111,75 @@ async function requestReport(path: string, init?: RequestInit): Promise<Analysis
   return body;
 }
 
+async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
+  let response: Response;
+  try {
+    response = await fetch(`${apiBase}${path}`, { credentials: "include", ...init });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    throw new ApiError("We couldn't reach the analysis service. Check that the backend is running, then try again.");
+  }
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(detailMessage(body) ?? (response.status === 409
+      ? "This older report does not have stored dataset rows. Upload the dataset again to compare columns."
+      : "The column comparison could not be completed."), response.status);
+  }
+  return body;
+}
+
+function isCategoricalComparison(value: unknown): value is CategoricalComparison {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  return typeof item.comparison_id === "number" && typeof item.analysis_id === "number" &&
+    item.comparison_type === "categorical_categorical" &&
+    (item.status === "ok" || item.status === "unavailable") && Array.isArray(item.warnings) &&
+    item.warnings.every((warning) => typeof warning === "string") && typeof item.note === "string" &&
+    !!item.selection && typeof item.selection === "object" && !!item.rows && typeof item.rows === "object" &&
+    !!item.test && typeof item.test === "object" && !!item.association && typeof item.association === "object";
+}
+
+export async function compareCategoricalColumns(
+  analysisId: number,
+  groupColumn: string,
+  outcomeColumn: string,
+  signal?: AbortSignal,
+): Promise<CategoricalComparison> {
+  const body = await requestJson(`/api/reports/${analysisId}/comparisons`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      comparison_type: "categorical_categorical",
+      group_column: groupColumn,
+      outcome_column: outcomeColumn,
+    }),
+    signal,
+  });
+  if (!isCategoricalComparison(body)) throw new ApiError("The analysis service returned an invalid comparison result.");
+  return body;
+}
+
+function isSuggestionResponse(value: unknown): value is SuggestionResponse {
+  if (!value || typeof value !== "object") return false;
+  const response = value as Record<string, unknown>;
+  return typeof response.analysis_id === "number" && (response.source === "ai" || response.source === "fallback") &&
+    Array.isArray(response.suggestions) && response.suggestions.every((entry) => {
+      if (!entry || typeof entry !== "object") return false;
+      const suggestion = entry as Record<string, unknown>;
+      return typeof suggestion.title === "string" && typeof suggestion.explanation === "string" &&
+        [suggestion.affected_columns, suggestion.evidence, suggestion.next_steps].every((list) =>
+          Array.isArray(list) && list.every((item) => typeof item === "string"));
+    });
+}
+
+export async function generateReportSuggestions(analysisId: number, signal?: AbortSignal): Promise<SuggestionResponse> {
+  const body = await requestJson(`/api/reports/${analysisId}/suggestions`, { method: "POST", signal });
+  if (!isSuggestionResponse(body) || body.analysis_id !== analysisId) {
+    throw new ApiError("The analysis service returned invalid suggestions.");
+  }
+  return body;
+}
+
 export async function analyzeDataset(file: File, options: ParsingOptions, signal?: AbortSignal): Promise<AnalysisReport> {
   const form = new FormData();
   form.append("file", file);
@@ -72,6 +194,21 @@ export function getReport(analysisId: string, signal?: AbortSignal, origin?: str
   const path = `/api/reports/${encodeURIComponent(analysisId)}`;
   const base = apiBase || origin;
   return requestReport(base ? new URL(path, base).toString() : path, { signal });
+}
+
+export async function saveColumnDisplayNames(
+  analysisId: number,
+  columnDisplayNames: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<AnalysisReport> {
+  const body = await requestJson(`/api/reports/${analysisId}/column-names`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ column_display_names: columnDisplayNames }),
+    signal,
+  });
+  if (!isAnalysisReport(body)) throw new ApiError("The analysis service returned an invalid updated report.");
+  return body;
 }
 
 export async function getReports(signal?: AbortSignal, origin?: string): Promise<ReportSummary[]> {

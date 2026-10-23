@@ -211,7 +211,7 @@ write_pid_file() {
 status "Starting backend with reload limited to backend Python files..."
 (
     cd "$REPO_ROOT"
-    exec "$VENV_PYTHON" -m uvicorn backend.api.main:app \
+    exec env ${DEV_USE_POLLING:+WATCHFILES_FORCE_POLLING=true} "$VENV_PYTHON" -m uvicorn backend.api.main:app \
         --reload --reload-dir "$REPO_ROOT/backend" \
         --host 127.0.0.1 --port 8000
 ) &
@@ -222,7 +222,7 @@ wait_for_url "Backend" "http://127.0.0.1:8000/health" "$BACKEND_PID"
 status "Starting frontend development server..."
 (
     cd "$FRONTEND_DIR"
-    exec npm run dev
+    exec env ${DEV_USE_POLLING:+VITE_USE_POLLING=true} npm run dev
 ) &
 FRONTEND_PID=$!
 write_pid_file "$FRONTEND_PID_FILE" "$FRONTEND_PID"
