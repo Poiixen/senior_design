@@ -1,13 +1,18 @@
 import {
   isRouteErrorResponse,
   Link,
+  redirect,
   useRevalidator,
   useSearchParams,
   type ShouldRevalidateFunctionArgs,
 } from "react-router";
+import { ColumnProfileTable } from "~/components/column-profile-table";
+import { CategoricalComparisonPanel } from "~/components/categorical-comparison";
+import { ReportSuggestions } from "~/components/report-suggestions";
 import { MissingValueTable, OutlierTable } from "~/components/diagnostic-tables";
+import { DuplicateAnalysis } from "~/components/duplicate-analysis";
 import { Icon } from "~/components/icon";
-import { getReport } from "~/lib/api";
+import { ApiError, getReport } from "~/lib/api";
 import { formatNumber, type AnalysisReport } from "~/lib/report";
 import { sampleReport } from "~/lib/sample-report";
 import type { Route } from "./+types/report";
@@ -16,25 +21,35 @@ import "./report.css";
 export function meta({ loaderData }: Route.MetaArgs) {
   return [
     { title: `${loaderData?.report.filename ?? "Analysis report"} · Team Science` },
-    { name: "description", content: "Dataset analysis summary, missing values, and numeric outlier diagnostics." },
+    { name: "description", content: "Dataset analysis summary, column profiles, missing values, duplicates, and numeric outlier diagnostics." },
   ];
 }
 
-export async function loader({ params, request }: Route.LoaderArgs) {
+export async function clientLoader({ params, request }: Route.ClientLoaderArgs) {
   if (params.analysisId === "sample") return { report: sampleReport, isSample: true };
   if (!params.analysisId || !/^[1-9]\d*$/.test(params.analysisId)) {
     throw new Response("Report not found", { status: 404 });
   }
-  return {
-    report: await getReport(params.analysisId, request.signal, new URL(request.url).origin),
-    isSample: false,
-  };
+  try { return { report: await getReport(params.analysisId, request.signal), isSample: false }; }
+  catch (error) { if (error instanceof ApiError && error.status === 401) throw redirect(`/login?next=${encodeURIComponent(new URL(request.url).pathname)}`); throw error; }
 }
 
 export function shouldRevalidate({ currentUrl, nextUrl, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
   // The URL selects a presentation of the same complete report.
   if (currentUrl.pathname === nextUrl.pathname && currentUrl.search !== nextUrl.search) return false;
   return defaultShouldRevalidate;
+}
+
+const VIEWS = {
+  columns: { tab: "Columns", title: "Column profiles" },
+  missing: { tab: "Missing values", title: "Missing-value diagnostics" },
+  duplicates: { tab: "Duplicates", title: "Duplicate analysis" },
+  outliers: { tab: "Outliers", title: "Outlier diagnostics" },
+} as const;
+type DetailView = keyof typeof VIEWS;
+
+function isDetailView(value: string | null): value is DetailView {
+  return value !== null && Object.hasOwn(VIEWS, value);
 }
 
 export function HydrateFallback() {
@@ -94,9 +109,10 @@ function Summary({ report }: { report: AnalysisReport }) {
           </div>
         </div>
         <dl className="quality-rows">
+          <div><dt>Column profiles</dt><dd>{formatNumber(summary.numeric_columns)} numeric · {formatNumber(summary.categorical_columns)} categorical</dd><dd><Link to="?view=columns" preventScrollReset>Explore columns <span aria-hidden="true">→</span></Link></dd></div>
           <div><dt>Missing values</dt><dd>{formatNumber(summary.missing_columns)} columns affected</dd><dd><Link to="?view=missing" preventScrollReset>Explore missing values <span aria-hidden="true">→</span></Link></dd></div>
           <div><dt>Outliers</dt><dd>{formatNumber(summary.outlier_columns)} numeric columns flagged</dd><dd><Link to="?view=outliers" preventScrollReset>Explore outliers <span aria-hidden="true">→</span></Link></dd></div>
-          <div><dt>Duplicate rows</dt><dd>{formatNumber(summary.duplicate_rows)} repeated rows</dd><dd className="muted">{summary.duplicate_rows > 0 ? "Review repeated records" : "No duplicates detected"}</dd></div>
+          <div><dt>Duplicate rows</dt><dd>{formatNumber(summary.duplicate_rows)} repeated rows</dd><dd><Link to="?view=duplicates" preventScrollReset>{summary.duplicate_rows > 0 ? "Explore duplicates" : "View duplicate details"} <span aria-hidden="true">→</span></Link></dd></div>
           <div><dt>Structure warnings</dt><dd>{formatNumber(validation.warnings.length)} warnings · non-blocking</dd><dd>{validation.warnings.length > 0 ? <a href="#structure-notes">View notes <span aria-hidden="true">→</span></a> : <span className="muted">No warnings</span>}</dd></div>
         </dl>
       </section>
@@ -125,8 +141,8 @@ export default function Report({ loaderData }: Route.ComponentProps) {
   const { report, isSample } = loaderData;
   const [searchParams] = useSearchParams();
   const requestedView = searchParams.get("view");
-  const view = requestedView === "missing" || requestedView === "outliers" ? requestedView : "summary";
-  const title = view === "missing" ? "Missing-value diagnostics" : view === "outliers" ? "Outlier diagnostics" : "Analysis report";
+  const view = isDetailView(requestedView) ? requestedView : "summary";
+  const title = view === "summary" ? "Analysis report" : VIEWS[view].title;
   const statusText = report.status === "completed" ? "Completed" : report.status === "running" ? "In progress" : "Analysis failed";
 
   return (
@@ -145,11 +161,16 @@ export default function Report({ loaderData }: Route.ComponentProps) {
 
       <nav className="panel report-tabs" aria-label="Report views">
         <Link to="." preventScrollReset aria-current={view === "summary" ? "page" : undefined}>Overview</Link>
-        <Link to="?view=missing" preventScrollReset aria-current={view === "missing" ? "page" : undefined}>Missing values</Link>
-        <Link to="?view=outliers" preventScrollReset aria-current={view === "outliers" ? "page" : undefined}>Outliers</Link>
+        {(Object.keys(VIEWS) as DetailView[]).map((key) => (
+          <Link key={key} to={`?view=${key}`} preventScrollReset aria-current={view === key ? "page" : undefined}>{VIEWS[key].tab}</Link>
+        ))}
       </nav>
 
-      {view === "summary" ? <Summary report={report} /> : view === "missing" ? <MissingValueTable report={report} /> : <OutlierTable report={report} />}
+      {view === "summary" && <><Summary report={report} /><ReportSuggestions analysisId={report.analysis_id} disabled={isSample} /></>}
+      {view === "columns" && <div className="report-columns-view"><ColumnProfileTable report={report} /><CategoricalComparisonPanel report={report} disabled={isSample} /></div>}
+      {view === "missing" && <MissingValueTable report={report} />}
+      {view === "duplicates" && <DuplicateAnalysis report={report} />}
+      {view === "outliers" && <OutlierTable report={report} />}
 
       <footer className="report-footer">
         <Link className="button button-secondary" to="/">Upload another dataset <span aria-hidden="true">→</span></Link>

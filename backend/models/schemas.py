@@ -111,6 +111,11 @@ class ValidationResult(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class CorrelationResult(_FiniteModel):
+    columns: list[str] = Field(default_factory=list)
+    matrix: list[list[Optional[float]]] = Field(default_factory=list)
+
+
 class AnalysisReport(_FiniteModel):
     """Complete saved snapshot of one analysis run.
 
@@ -130,8 +135,12 @@ class AnalysisReport(_FiniteModel):
     dataset: ReportDataset
     summary: ReportSummary
     parsing_options: ParsingOptions
+    column_display_names: dict[str, str] = Field(default_factory=dict)
     missing_values: list[MissingValueResult]
     outliers: list[OutlierResult]
+    column_profiles: Optional[list[dict[str, Any]]] = None
+    duplicates: Optional[dict[str, Any]] = None
+    correlation: CorrelationResult = Field(default_factory=CorrelationResult)
     validation: ValidationResult
     diagnostics: list[dict[str, Any]]
     findings: list[DiagnosticResult]

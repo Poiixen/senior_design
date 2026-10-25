@@ -1,0 +1,110 @@
+{
+  "request": {
+    "comparison_type": "categorical_numeric",
+    "group_column": "education",
+    "value_column": "age"
+  },
+  "response": {
+    "comparison_id": 4,
+    "analysis_id": 1,
+    "created_at": "2026-10-22T02:07:38.656351Z",
+    "comparison_type": "categorical_numeric",
+    "design": "independent_groups",
+    "selection": {
+      "group_column": "education",
+      "value_column": "age"
+    },
+    "status": "ok",
+    "reason": null,
+    "rows": {
+      "total": 128,
+      "included": 126,
+      "excluded": 2,
+      "exclusion_reasons": {
+        "missing_group_value": 1,
+        "missing_or_non_finite_value": 1
+      }
+    },
+    "overall": {
+      "count": 126,
+      "mean": 38.27777777777778,
+      "median": 38.0,
+      "std_dev": 7.968577176775175,
+      "min": 24.0,
+      "q1": 32.0,
+      "q3": 44.0,
+      "max": 55.0
+    },
+    "groups": [
+      {
+        "label": "HS",
+        "count": 51,
+        "mean": 31.274509803921568,
+        "median": 31.0,
+        "std_dev": 5.161699066673876,
+        "min": 24.0,
+        "q1": 27.5,
+        "q3": 34.0,
+        "max": 52.0
+      },
+      {
+        "label": "BA",
+        "count": 50,
+        "mean": 40.5,
+        "median": 41.0,
+        "std_dev": 4.395034303690045,
+        "min": 32.0,
+        "q1": 38.0,
+        "q3": 43.75,
+        "max": 48.0
+      },
+      {
+        "label": "MA",
+        "count": 25,
+        "mean": 48.12,
+        "median": 48.0,
+        "std_dev": 4.512205669071391,
+        "min": 39.0,
+        "q1": 46.0,
+        "q3": 51.0,
+        "max": 55.0
+      }
+    ],
+    "test": {
+      "method": {
+        "key": "kruskal_wallis",
+        "name": "Kruskal-Wallis H test",
+        "evaluates": "Whether values tend to be higher in some groups than in others, using the ranks of the values rather than the values themselves. It is not a test of means.",
+        "null_hypothesis": "All groups come from the same distribution.",
+        "assumptions": [
+          "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+          "Values can be meaningfully ranked.",
+          "It can be read as a comparison of medians only when every group's distribution has the same shape and spread.",
+          "A significant result means at least one group differs; it does not say which. Pairwise follow-up tests are not provided."
+        ]
+      },
+      "status": "ok",
+      "reason": null,
+      "statistic_name": "H",
+      "statistic": 83.11873245219128,
+      "degrees_of_freedom": 2,
+      "p_value": 8.932984421500548e-19,
+      "group_sizes": [
+        {
+          "label": "HS",
+          "count": 51
+        },
+        {
+          "label": "BA",
+          "count": 50
+        },
+        {
+          "label": "MA",
+          "count": 25
+        }
+      ]
+    },
+    "warnings": [],
+    "note": "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported."
+  }
+}

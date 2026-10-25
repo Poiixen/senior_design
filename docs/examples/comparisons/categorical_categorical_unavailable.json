@@ -1,0 +1,85 @@
+{
+  "request": {
+    "comparison_type": "categorical_categorical",
+    "group_column": "group",
+    "outcome_column": "country"
+  },
+  "response": {
+    "comparison_id": 6,
+    "analysis_id": 3,
+    "created_at": "2026-10-22T02:07:38.822177Z",
+    "comparison_type": "categorical_categorical",
+    "design": "independent_groups",
+    "selection": {
+      "group_column": "group",
+      "outcome_column": "country"
+    },
+    "status": "ok",
+    "reason": null,
+    "rows": {
+      "total": 3,
+      "included": 3,
+      "excluded": 0,
+      "exclusion_reasons": {
+        "missing_group_value": 0,
+        "missing_outcome_value": 0
+      }
+    },
+    "group_categories": [
+      "a",
+      "b"
+    ],
+    "outcome_categories": [
+      "US"
+    ],
+    "counts": [
+      [
+        2
+      ],
+      [
+        1
+      ]
+    ],
+    "group_totals": [
+      2,
+      1
+    ],
+    "outcome_totals": [
+      3
+    ],
+    "row_percentages": [
+      [
+        100.0
+      ],
+      [
+        100.0
+      ]
+    ],
+    "percentage_denominator": "group_total",
+    "test": {
+      "method": {
+        "key": "chi_square_independence",
+        "name": "Pearson's chi-square test of independence",
+        "evaluates": "Whether the distribution of the outcome column's categories differs between groups more than chance would explain.",
+        "null_hypothesis": "The two columns are independent.",
+        "assumptions": [
+          "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+          "Expected counts are large enough for the chi-square approximation: none below 1 and no more than 20% below 5."
+        ]
+      },
+      "status": "unavailable",
+      "reason": "Column 'country' has only one category in the compared rows, so there is no association to test."
+    },
+    "association": {
+      "method": {
+        "key": "cramers_v",
+        "name": "Cramér's V",
+        "evaluates": "Strength of association from 0 (none) to 1 (one column determines the other). It does not indicate direction or cause."
+      },
+      "status": "unavailable",
+      "reason": "Column 'country' has only one category in the compared rows, so there is no association to test."
+    },
+    "warnings": [],
+    "note": "These results describe how categories co-occur in this dataset. An association does not show that one column causes the other and is not, by itself, evidence of bias."
+  }
+}

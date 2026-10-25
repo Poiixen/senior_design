@@ -1,5 +1,8 @@
 """SQLAlchemy models for metadata and summaries, never raw dataset rows.
 
+Uploaded rows that later analyses need are kept on disk by
+``backend.database.dataset_store``, not in these tables.
+
 Timestamps are naive UTC datetimes, matching SQLite's DateTime storage.
 """
 
@@ -87,3 +90,19 @@ class AnalysisReport(Base):
         ForeignKey("analyses.id"), primary_key=True
     )
     report: Mapped[dict] = mapped_column(JSON)
+
+
+class Comparison(Base):
+    """A saved column comparison for one analysis's dataset.
+
+    ``result`` is the JSON-safe comparison, including the selected columns,
+    summaries, test results and warnings.
+    """
+
+    __tablename__ = "comparisons"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    analysis_id: Mapped[int] = mapped_column(ForeignKey("analyses.id"), index=True)
+    comparison_type: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    result: Mapped[dict] = mapped_column(JSON)

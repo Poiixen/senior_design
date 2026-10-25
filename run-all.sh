@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
-# Start both Team Science development services from any checkout location.
+# TEAM BOOTSTRAP + DEVELOPMENT LAUNCHER
+#
+# This is the supported entry point for a fresh Team Science checkout. It
+# validates required tooling, repairs stale repository-local environments,
+# installs the exact backend/frontend dependencies declared by the project,
+# and only then starts both services. Teammates should not need to install
+# individual Python or npm packages by hand.
+#
 # Supported shells: Git Bash, WSL, macOS, and Linux.
 
 set -Eeuo pipefail
@@ -84,24 +91,32 @@ else
 fi
 
 find_bootstrap_python() {
-    if command -v python3 >/dev/null 2>&1; then
-        printf '%s\n' "python3"
-    elif command -v python >/dev/null 2>&1; then
-        printf '%s\n' "python"
-    elif command -v py >/dev/null 2>&1; then
-        printf '%s\n' "py"
-    else
-        return 1
+    local candidate
+    for candidate in python3 python; do
+        if command -v "$candidate" >/dev/null 2>&1 &&
+           "$candidate" -c 'import sys; raise SystemExit(sys.version_info < (3, 11))' >/dev/null 2>&1; then
+            BOOTSTRAP_PYTHON=("$candidate")
+            return 0
+        fi
+    done
+    if command -v py >/dev/null 2>&1 &&
+       py -3.11 -c 'import sys; raise SystemExit(sys.version_info < (3, 11))' >/dev/null 2>&1; then
+        BOOTSTRAP_PYTHON=(py -3.11)
+        return 0
     fi
+    return 1
 }
 
-status "Checking development tools..."
-BOOTSTRAP_PYTHON="$(find_bootstrap_python)" || {
-    error "Python was not found. Install Python 3.11+ and try again."
+printf '\n'
+status "Team setup: checking required development tools..."
+BOOTSTRAP_PYTHON=()
+find_bootstrap_python || {
+    error "Python 3.11 or newer was not found. Install it from https://www.python.org/downloads/ and ensure it is available in this shell."
     exit 1
 }
-command -v node >/dev/null 2>&1 || { error "Node.js was not found."; exit 1; }
-command -v npm >/dev/null 2>&1 || { error "npm was not found."; exit 1; }
+BOOTSTRAP_VERSION="$("${BOOTSTRAP_PYTHON[@]}" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+command -v node >/dev/null 2>&1 || { error "Node.js was not found. Install Node.js 22.22.0 or newer from https://nodejs.org/."; exit 1; }
+command -v npm >/dev/null 2>&1 || { error "npm was not found. Reinstall Node.js with npm included."; exit 1; }
 
 read -r NODE_MAJOR NODE_MINOR NODE_PATCH < <(
     node -p 'process.versions.node.split(".").map(Number).join(" ")'
@@ -111,23 +126,62 @@ read -r NODE_MAJOR NODE_MINOR NODE_PATCH < <(
     exit 1
 }
 
+rebuild_venv() {
+    status "Team setup: creating a clean Python $BOOTSTRAP_VERSION virtual environment..."
+    "${BOOTSTRAP_PYTHON[@]}" -m venv --clear "$REPO_ROOT/.venv" || {
+        error "The .venv could not be rebuilt. Stop any running backend process and run this script again."
+        exit 1
+    }
+}
+
 if [[ -e "$VENV_PYTHON" ]] && ! "$VENV_PYTHON" --version >/dev/null 2>&1; then
-    status "Repairing a stale Python virtual environment..."
-    "$BOOTSTRAP_PYTHON" -m venv --clear "$REPO_ROOT/.venv"
+    status "Team setup: rebuilding a stale Python virtual environment..."
+    rebuild_venv
 elif [[ ! -x "$VENV_PYTHON" ]]; then
-    status "Creating the repository-local Python environment..."
-    "$BOOTSTRAP_PYTHON" -m venv "$REPO_ROOT/.venv"
+    status "Team setup: creating the repository-local Python environment..."
+    "${BOOTSTRAP_PYTHON[@]}" -m venv "$REPO_ROOT/.venv"
+else
+    VENV_VERSION="$("$VENV_PYTHON" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+    if [[ "$VENV_VERSION" != "$BOOTSTRAP_VERSION" ]]; then
+        status "Team setup: .venv uses Python $VENV_VERSION but this machine uses Python $BOOTSTRAP_VERSION."
+        rebuild_venv
+    fi
 fi
 
-if ! "$VENV_PYTHON" -c 'import fastapi, pandas, sqlalchemy, uvicorn' >/dev/null 2>&1; then
-    status "Installing backend dependencies..."
-    "$VENV_PYTHON" -m pip install -r "$REPO_ROOT/backend/requirements.txt"
+# Always synchronize from requirements.txt. pip leaves satisfied packages in
+# place, while installing newly added dependencies (for example itsdangerous
+# or openpyxl) that a partial import check could miss.
+status "Team setup: synchronizing all backend dependencies..."
+install_backend_dependencies() {
+    "$VENV_PYTHON" -m pip install --disable-pip-version-check -r "$REPO_ROOT/backend/requirements.txt"
+}
+
+install_backend_dependencies || {
+    error "Backend dependency installation failed. Check your network/proxy settings, then run this script again."
+    exit 1
+}
+if ! "$VENV_PYTHON" -c 'import fastapi, itsdangerous, openpyxl, pandas, pydantic_core, sqlalchemy, uvicorn' >/dev/null 2>&1; then
+    status "Team setup: a compiled Python dependency is incompatible (for example pydantic_core)."
+    status "Team setup: rebuilding .venv and reinstalling dependencies once..."
+    rebuild_venv
+    install_backend_dependencies || {
+        error "Backend dependency installation failed after rebuilding .venv. Check your network/proxy settings."
+        exit 1
+    }
+    "$VENV_PYTHON" -c 'import fastapi, itsdangerous, openpyxl, pandas, pydantic_core, sqlalchemy, uvicorn' || {
+        error "Backend dependency verification still fails after a clean rebuild. Share the traceback above with the team lead."
+        exit 1
+    }
 fi
 
-if [[ ! -d "$FRONTEND_DIR/node_modules" ]]; then
-    status "Installing frontend dependencies from package-lock.json..."
-    (cd "$FRONTEND_DIR" && npm ci)
-fi
+# npm ci guarantees every teammate uses exactly package-lock.json, and also
+# replaces incomplete or stale node_modules directories.
+status "Team setup: synchronizing frontend dependencies from package-lock.json..."
+(cd "$FRONTEND_DIR" && npm ci) || {
+    error "Frontend dependency installation failed. Check your network/proxy settings, then run this script again."
+    exit 1
+}
+success "Team setup complete: declared backend and frontend dependencies are installed"
 
 if [[ ! -f "$FRONTEND_DIR/.env" && -f "$FRONTEND_DIR/.env.example" ]]; then
     cp -- "$FRONTEND_DIR/.env.example" "$FRONTEND_DIR/.env"
@@ -157,7 +211,7 @@ write_pid_file() {
 status "Starting backend with reload limited to backend Python files..."
 (
     cd "$REPO_ROOT"
-    exec "$VENV_PYTHON" -m uvicorn backend.api.main:app \
+    exec env ${DEV_USE_POLLING:+WATCHFILES_FORCE_POLLING=true} "$VENV_PYTHON" -m uvicorn backend.api.main:app \
         --reload --reload-dir "$REPO_ROOT/backend" \
         --host 127.0.0.1 --port 8000
 ) &
@@ -168,7 +222,7 @@ wait_for_url "Backend" "http://127.0.0.1:8000/health" "$BACKEND_PID"
 status "Starting frontend development server..."
 (
     cd "$FRONTEND_DIR"
-    exec npm run dev
+    exec env ${DEV_USE_POLLING:+VITE_USE_POLLING=true} npm run dev
 ) &
 FRONTEND_PID=$!
 write_pid_file "$FRONTEND_PID_FILE" "$FRONTEND_PID"

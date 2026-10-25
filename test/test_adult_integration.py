@@ -1,10 +1,3 @@
-"""Integration tests: real UCI Adult data through the full pipeline.
-
-Every diagnostic is exercised end to end against data/raw, so these
-catch regressions the synthetic unit tests cannot. Skipped when the
-raw dataset is not checked out.
-"""
-
 import pandas as pd
 import pytest
 
@@ -49,15 +42,14 @@ def test_no_surrounding_whitespace_survives_the_adapter(adult_df):
 
 # --- Diagnostics ------------------------------------------------------
 
-
 def test_validate_reports_a_healthy_dataset(adult_df):
     assert validate_dataset(adult_df) == {
         "valid": True,
         "rows": 32561,
         "columns": 15,
         "warnings": [],
+        "errors": [],
     }
-
 
 def test_profile_splits_numeric_and_categorical_columns(adult_df):
     result = profile_dataset(adult_df)

@@ -2,8 +2,11 @@
 # checks in the ingestion and profiling code stop matching. Pin until the
 # code is updated for pandas 3.
 pandas>=2.2,<3
+openpyxl>=3.1
 numpy
 scipy
+# Stores uploaded datasets as Parquet for column comparisons.
+pyarrow
 scikit-learn
 fastapi
 uvicorn

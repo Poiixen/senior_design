@@ -1,4 +1,8 @@
-"""Run DataFrame diagnostics and persist only metadata and summary findings."""
+"""Run DataFrame diagnostics and persist only metadata and summary findings.
+
+Uploaded rows are kept only in the optional on-disk dataset store, which
+column comparisons read back.
+"""
 
 from typing import Any, Optional
 
@@ -7,16 +11,32 @@ from sqlalchemy.engine import Engine
 
 from backend.database import repository
 from backend.database.connection import session_scope
+from backend.database.dataset_store import DatasetStore
+from backend.diagnostics.categorical_comparison import compare_categorical
 from backend.diagnostics.generic_dataset_profiler import profile_dataset
+from backend.diagnostics.correlation_analysis import calculate_correlation_matrix
 from backend.diagnostics.iqr_outlier_detection import detect_numeric_outliers
+from backend.diagnostics.numeric_group_comparison import compare_numeric_across_groups
 from backend.diagnostics.validate_dataset import validate_dataset
-from backend.models import Analysis, Dataset, DiagnosticResult
+from backend.models import Analysis, Comparison, Dataset, DiagnosticResult
 from backend.models.schemas import (
     REPORT_SCHEMA_VERSION,
     AnalysisReport,
     ParsingOptions,
+    finite_or_none,
 )
 from backend.models.schemas import DiagnosticResult as DiagnosticResultSchema
+
+
+# Comparison type -> function taking (df, group_column, <second column>).
+COMPARISONS = {
+    "categorical_categorical": compare_categorical,
+    "categorical_numeric": compare_numeric_across_groups,
+}
+
+
+class DatasetRowsUnavailable(Exception):
+    """The analysis exists but its uploaded rows were not stored."""
 
 
 def _utc_timestamp(value) -> Optional[str]:
@@ -60,6 +80,7 @@ def _build_report(
     outliers: list,
     parsing_options: Optional[dict[str, Any]],
     findings: list[DiagnosticResultSchema],
+    correlation: dict,
 ) -> AnalysisReport:
     """Assemble the saved report from results computed once by the run."""
     missing_values = [
@@ -104,6 +125,9 @@ def _build_report(
         parsing_options=ParsingOptions(**(parsing_options or {})),
         missing_values=missing_values,
         outliers=outlier_results,
+        column_profiles=profile["column_details"] if profile else None,
+        duplicates=profile["duplicates"] if profile else None,
+        correlation=correlation,
         validation=validation,
         diagnostics=diagnostics,
         findings=findings,
@@ -215,16 +239,28 @@ def _outlier_result(raw: dict) -> DiagnosticResultSchema:
     )
 
 
+def _comparison_response(comparison: Comparison) -> dict:
+    return {
+        "comparison_id": comparison.id,
+        "analysis_id": comparison.analysis_id,
+        "created_at": _utc_timestamp(comparison.created_at),
+        **comparison.result,
+    }
+
+
 class AnalysisService:
     """Coordinate pure diagnostics with the repository's transactions.
 
     The caller initializes the database before constructing this service.
-    DataFrames remain in memory; only dimensions and diagnostic summaries
-    are written to the database.
+    Only dimensions and diagnostic summaries are written to the database.
+    With a ``dataset_store``, registered DataFrames are also saved to disk so
+    column comparisons can be run later; without one, comparisons are
+    unavailable.
     """
 
-    def __init__(self, engine: Engine):
+    def __init__(self, engine: Engine, dataset_store: Optional[DatasetStore] = None):
         self.engine = engine
+        self.dataset_store = dataset_store
 
     def register_dataset(
         self,
@@ -235,7 +271,10 @@ class AnalysisService:
         file_name: Optional[str] = None,
         user_id: Optional[int] = None,
     ) -> Dataset:
-        """Save dataset metadata and dimensions without storing raw rows."""
+        """Save dataset metadata, and its rows to the dataset store if any.
+
+        A failure to store the rows rolls back the metadata too.
+        """
         with session_scope(self.engine) as session:
             dataset = repository.create_dataset(
                 session,
@@ -246,6 +285,8 @@ class AnalysisService:
                 row_count=len(df),
                 column_count=len(df.columns),
             )
+            if self.dataset_store is not None:
+                self.dataset_store.save(dataset.id, df)
         return dataset
 
     def run_analysis(
@@ -283,11 +324,13 @@ class AnalysisService:
             results = _validation_results(validation)
             profile = None
             outliers = []
+            correlation = {"columns": [], "matrix": []}
 
             if validation["valid"]:
                 total_rows = len(df)
                 profile = profile_dataset(df)
                 outliers = detect_numeric_outliers(df)
+                correlation = calculate_correlation_matrix(df)
                 results.extend(_profile_results(profile))
                 results.extend(
                     _missing_value_result(row, total_rows)
@@ -317,6 +360,7 @@ class AnalysisService:
                     outliers=outliers,
                     parsing_options=parsing_options,
                     findings=results,
+                    correlation=correlation,
                 )
                 repository.save_analysis_report(
                     session, analysis_id, report.model_dump(mode="json")
@@ -337,3 +381,63 @@ class AnalysisService:
         """Return an analysis's saved findings in the order they were recorded."""
         with session_scope(self.engine) as session:
             return repository.list_diagnostic_results(session, analysis_id)
+
+    def compare_columns(
+        self,
+        analysis_id: int,
+        user_id: int,
+        comparison_type: str,
+        group_column: str,
+        compared_column: str,
+    ) -> Optional[dict]:
+        """Compare two columns of the analysis's dataset and save the result.
+
+        ``compared_column`` is the outcome column for categorical_categorical
+        comparisons and the measurement for categorical_numeric ones. Returns
+        None when the user does not own the analysis. Raises
+        DatasetRowsUnavailable when the rows were not stored, and
+        ComparisonError for columns that cannot be compared.
+        """
+        with session_scope(self.engine) as session:
+            analysis = repository.get_analysis_for_user(session, analysis_id, user_id)
+        if analysis is None:
+            return None
+        df = (
+            self.dataset_store.load(analysis.dataset_id)
+            if self.dataset_store is not None
+            else None
+        )
+        if df is None:
+            raise DatasetRowsUnavailable(
+                "The rows for this report were not stored, so columns cannot be "
+                "compared. Upload the file again to compare its columns."
+            )
+
+        result = COMPARISONS[comparison_type](df, group_column, compared_column)
+        with session_scope(self.engine) as session:
+            comparison = repository.save_comparison(
+                session,
+                analysis_id=analysis_id,
+                comparison_type=comparison_type,
+                result=finite_or_none(result),
+            )
+            return _comparison_response(comparison)
+
+    def list_comparisons(self, analysis_id: int, user_id: int) -> list[dict]:
+        """Saved comparisons for an analysis the user owns, oldest first."""
+        with session_scope(self.engine) as session:
+            return [
+                _comparison_response(comparison)
+                for comparison in repository.list_comparisons_for_user(
+                    session, analysis_id, user_id
+                )
+            ]
+
+    def get_comparison(
+        self, analysis_id: int, comparison_id: int, user_id: int
+    ) -> Optional[dict]:
+        with session_scope(self.engine) as session:
+            comparison = repository.get_comparison_for_user(
+                session, analysis_id, comparison_id, user_id
+            )
+            return None if comparison is None else _comparison_response(comparison)

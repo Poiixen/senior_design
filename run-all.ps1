@@ -60,6 +60,10 @@ $backendCmd = {
     param($RepoRoot)
     cd "$RepoRoot"
 
+    # Polling is more reliable than Windows filesystem events when the
+    # repository is in a synced folder or the server runs in a background job.
+    $env:WATCHFILES_FORCE_POLLING = "true"
+
     if (-not (Test-Path ".venv")) {
         python -m venv .venv
     }
@@ -71,7 +75,7 @@ $backendCmd = {
     Write-Host "API Docs: http://127.0.0.1:8000/docs" -ForegroundColor Cyan
     Write-Host ""
 
-    .\.venv\Scripts\python -m uvicorn backend.api.main:app --reload --host 127.0.0.1 --port 8000
+    .\.venv\Scripts\python -m uvicorn backend.api.main:app --reload --reload-dir backend --host 127.0.0.1 --port 8000
 }
 
 # Start backend in background
@@ -133,6 +137,8 @@ Write-Host "Open: http://127.0.0.1:5173" -ForegroundColor Cyan
 Write-Host ""
 
 try {
+    # Tell Vite to poll so saved frontend files consistently trigger HMR on Windows.
+    $env:VITE_USE_POLLING = "true"
     & npm.cmd run dev
 } finally {
     Write-Host ""
