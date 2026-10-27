@@ -176,9 +176,23 @@ fi
 
 # npm ci guarantees every teammate uses exactly package-lock.json, and also
 # replaces incomplete or stale node_modules directories.
+if is_windows_shell; then
+    status "Releasing frontend dependency locks from this checkout..."
+    frontend_stop_script="$REPO_ROOT/scripts/stop-frontend.ps1"
+    frontend_stop_root="$REPO_ROOT"
+    if command -v cygpath >/dev/null 2>&1; then
+        frontend_stop_script="$(cygpath -w "$frontend_stop_script")"
+        frontend_stop_root="$(cygpath -w "$frontend_stop_root")"
+    fi
+    powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass \
+        -File "$frontend_stop_script" -RepoRoot "$frontend_stop_root" || {
+        error "Could not release this checkout's frontend locks. Stop its dev server with Ctrl+C, then run this script again."
+        exit 1
+    }
+fi
 status "Team setup: synchronizing frontend dependencies from package-lock.json..."
 (cd "$FRONTEND_DIR" && npm ci) || {
-    error "Frontend dependency installation failed. Check your network/proxy settings, then run this script again."
+    error "Frontend dependency installation failed. EPERM/unlink usually means a native module is still in use: stop this checkout's dev servers and retry. For download errors, check your network/proxy settings."
     exit 1
 }
 success "Team setup complete: declared backend and frontend dependencies are installed"

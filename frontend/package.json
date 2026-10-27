@@ -6,6 +6,10 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "start": "react-router-serve ./build/server/index.js",
+    "pretest": "npm run build",
+    "test": "node --test ../test/dashboard.test.mjs ../test/frontend-pages.test.mjs ../test/preferences.test.mjs ../test/session.test.mjs",
+    "test:e2e": "playwright test",
+    "pretest:e2e": "npm run build",
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
@@ -17,6 +21,7 @@
     "react-router": "^8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@react-router/dev": "^8",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22",

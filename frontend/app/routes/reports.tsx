@@ -3,6 +3,9 @@ import type { Route } from "./+types/reports";
 import { ApiError, getReports } from "~/lib/api";
 import { formatNumber } from "~/lib/report";
 import { Icon } from "~/components/icon";
+import { useState } from "react";
+import { usePreferences } from "~/components/preferences-provider";
+import { REPORT_SORT_OPTIONS, sortReports, type ReportSort } from "~/lib/preferences";
 
 export function meta() {
   return [
@@ -37,6 +40,12 @@ function ReportDate({ value }: { value: string | null }) {
 
 export default function Reports({ loaderData }: Route.ComponentProps) {
   const { reports } = loaderData;
+  const { preferences } = usePreferences();
+  const [sortOverride, setSortOverride] = useState<ReportSort | null>(null);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const sort = sortOverride ?? preferences.reportSort;
+  const visibleReports = sortReports(reports.filter(report => (status === "all" || report.status === status) && (report.filename ?? "").toLowerCase().includes(search.trim().toLowerCase())), sort);
 
   return <div className="reports-page">
     <header className="page-heading reports-heading">
@@ -45,19 +54,20 @@ export default function Reports({ loaderData }: Route.ComponentProps) {
         <h1>Saved reports</h1>
         <p className="muted">Open results from datasets analyzed in this workspace.</p>
       </div>
-      <Link className="button button-primary" to="/"><Icon name="upload" />Upload dataset</Link>
+      <Link className="button button-primary" to="/upload"><Icon name="upload" />Upload dataset</Link>
     </header>
 
+    {reports.length > 0 && <div className="panel reports-controls"><label htmlFor="report-search">Search reports<input id="report-search" type="search" placeholder="Search by filename" value={search} onChange={event => setSearch(event.target.value)} /></label><label htmlFor="report-status">Status<select id="report-status" value={status} onChange={event => setStatus(event.target.value)}><option value="all">All statuses</option><option value="completed">Completed</option><option value="running">In progress</option><option value="failed">Failed</option></select></label><label htmlFor="reports-sort">Sort reports<select id="reports-sort" value={sort} onChange={event => setSortOverride(event.target.value as ReportSort)}>{Object.entries(REPORT_SORT_OPTIONS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>}
     {reports.length === 0 ? (
       <section className="panel reports-empty">
         <Icon name="report" />
         <h2>No saved reports yet</h2>
         <p className="muted">Analyze a CSV dataset and its report will appear here.</p>
-        <Link className="button button-primary" to="/">Upload your first dataset</Link>
+        <Link className="button button-primary" to="/upload">Upload your first dataset</Link>
       </section>
-    ) : (
+    ) : visibleReports.length === 0 ? <section className="panel reports-empty"><h2>No matching reports</h2><p className="muted">Try another filename or status.</p><button className="button button-secondary" type="button" onClick={() => { setSearch(""); setStatus("all"); }}>Clear search and filters</button></section> : (
       <div className="report-list" aria-label="Saved analysis reports">
-        {reports.map((report) => (
+        {visibleReports.map((report) => (
           <article className="panel report-list-item" key={report.analysis_id}>
             <div className="report-list-main">
               <span className="report-list-icon"><Icon name="report" /></span>
@@ -67,9 +77,9 @@ export default function Reports({ loaderData }: Route.ComponentProps) {
               </div>
             </div>
             <dl className="report-list-metrics">
-              <div><dt>Rows</dt><dd>{formatNumber(report.dataset.rows)}</dd></div>
-              <div><dt>Columns</dt><dd>{formatNumber(report.dataset.columns)}</dd></div>
-              <div><dt>Issues</dt><dd>{formatNumber(report.summary.issues_detected)}</dd></div>
+              <div><dt>Rows</dt><dd>{report.dataset?.rows == null ? "Unavailable" : formatNumber(report.dataset.rows)}</dd></div>
+              <div><dt>Columns</dt><dd>{report.dataset?.columns == null ? "Unavailable" : formatNumber(report.dataset.columns)}</dd></div>
+              <div><dt>Issues</dt><dd>{report.summary?.issues_detected == null ? "Unavailable" : formatNumber(report.summary.issues_detected)}</dd></div>
             </dl>
             <span className={`badge ${report.status === "completed" ? "badge-success" : report.status === "failed" ? "badge-error" : "badge-neutral"}`}>
               {report.status === "completed" ? "Completed" : report.status === "failed" ? "Failed" : "In progress"}
@@ -89,6 +99,6 @@ export function ErrorBoundary() {
     <Icon name="alert" />
     <h1>Unable to load saved reports</h1>
     <p className="muted">Check that the analysis service is running, then refresh this page.</p>
-    <Link className="button button-secondary" to="/">Return to upload</Link>
+    <Link className="button button-secondary" to="/upload">Return to upload</Link>
   </section>;
 }

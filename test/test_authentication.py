@@ -1,8 +1,12 @@
 """Tests for user registration, login, logout and the current-user endpoint."""
 
 from fastapi.testclient import TestClient
+from fastapi import HTTPException
+from starlette.requests import Request
+import pytest
 
 from backend.api.main import app
+from backend.api import auth
 from backend.database import repository
 from backend.database.connection import session_scope
 
@@ -120,6 +124,47 @@ def test_session_cookie_is_http_only(client):
     response = register(client)
 
     assert "httponly" in response.headers["set-cookie"].lower()
+    assert "max-age=300" in response.headers["set-cookie"].lower()
+
+
+def test_session_expires_at_five_minutes_of_inactivity(client, monkeypatch):
+    monkeypatch.setattr(auth, "time", lambda: 1000)
+    register(client)
+    monkeypatch.setattr(auth, "time", lambda: 1300)
+    response = client.get("/api/auth/me")
+    assert response.status_code == 401
+    assert "expired" in response.json()["detail"].lower()
+    assert not client.cookies.get("session")
+
+
+def test_authenticated_activity_renews_the_idle_window(client, monkeypatch):
+    monkeypatch.setattr(auth, "time", lambda: 1000)
+    register(client)
+    monkeypatch.setattr(auth, "time", lambda: 1299)
+    assert client.get("/api/auth/me").status_code == 200
+    monkeypatch.setattr(auth, "time", lambda: 1500)
+    assert client.get("/api/reports").status_code == 200
+    monkeypatch.setattr(auth, "time", lambda: 1800)
+    assert client.get("/api/auth/me").status_code == 401
+
+
+def test_unprotected_requests_do_not_renew_authenticated_activity(client, monkeypatch):
+    monkeypatch.setattr(auth, "time", lambda: 1000)
+    register(client)
+    monkeypatch.setattr(auth, "time", lambda: 1290)
+    client.get("/api/health")
+    monkeypatch.setattr(auth, "time", lambda: 1300)
+    assert client.get("/api/reports").status_code == 401
+
+
+@pytest.mark.parametrize("last_activity", [None, "1000", True, float("nan"), float("inf"), 2000])
+def test_missing_or_invalid_activity_requires_signing_in(last_activity, monkeypatch):
+    monkeypatch.setattr(auth, "time", lambda: 1000)
+    request = Request({"type": "http", "session": {"user_id": 1, "last_activity": last_activity}})
+    with pytest.raises(HTTPException) as error:
+        auth.get_current_user(request)
+    assert error.value.status_code == 401
+    assert not request.session
 
 
 def test_password_hash_is_never_returned(client):
