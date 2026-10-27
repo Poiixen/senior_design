@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { DEFAULT_PREFERENCES, PREFERENCES_KEY, readPreferences, writePreferences, resolveAppearance, sortReports, validatePreferences, initializeAppearance } from "../frontend/app/lib/preferences.ts";
 
 test("missing, invalid, and obsolete preferences use safe defaults", () => {
-  for (const value of [null, [], "bad", { theme: "blue", accent: "neon", density: "tiny", motion: "fast", reportSort: "__proto__", sidebarCollapsed: "yes" }]) {
+  for (const value of [null, [], "bad", { theme: "blue", accent: "neon", palette: "__proto__", density: "tiny", motion: "fast", reportSort: "__proto__", sidebarCollapsed: "yes" }]) {
     assert.deepEqual(validatePreferences(value), DEFAULT_PREFERENCES);
   }
   assert.deepEqual(readPreferences({ getItem: () => "{bad json" }), DEFAULT_PREFERENCES);
@@ -13,7 +13,7 @@ test("missing, invalid, and obsolete preferences use safe defaults", () => {
 test("storage round trips supported preferences and strips sensitive or unknown fields", () => {
   let stored;
   const storage = { getItem: () => stored, setItem: (key, value) => { assert.equal(key, PREFERENCES_KEY); stored = value; } };
-  const value = { theme: "dark", accent: "teal", density: "compact", motion: "reduce", reportSort: "most-rows", sidebarCollapsed: true };
+  const value = { theme: "dark", palette: "forest", accent: "teal", density: "compact", motion: "reduce", reportSort: "most-rows", sidebarCollapsed: true };
   writePreferences(storage, { ...value, email: "private", password: "never-store", report: "private" });
   assert.deepEqual(readPreferences(storage), value);
   assert.doesNotMatch(stored, /private|password|email/);
@@ -45,14 +45,14 @@ test("appearance bootstrap applies validated stored values before rendering", ()
   const dataset = {};
   try {
     globalThis.document = { documentElement: { dataset } };
-    globalThis.localStorage = { getItem: () => JSON.stringify({ theme: "dark", accent: "teal", density: "compact", motion: "reduce" }) };
+    globalThis.localStorage = { getItem: () => JSON.stringify({ theme: "dark", palette: "forest", accent: "teal", density: "compact", motion: "reduce" }) };
     globalThis.matchMedia = () => ({ matches: false });
     initializeAppearance();
-    assert.deepEqual(dataset, { theme: "dark", accent: "teal", density: "compact", motion: "reduce" });
+    assert.deepEqual(dataset, { theme: "dark", palette: "forest", accent: "teal", density: "compact", motion: "reduce" });
     globalThis.localStorage = { getItem: () => JSON.stringify({ theme: "unsupported", density: "wrong", motion: "wrong" }) };
     globalThis.matchMedia = () => ({ matches: true });
     initializeAppearance();
-    assert.deepEqual(dataset, { theme: "dark", accent: "violet", density: "comfortable", motion: "reduce" });
+    assert.deepEqual(dataset, { theme: "dark", palette: "neutral", accent: "violet", density: "comfortable", motion: "reduce" });
   } finally {
     for (const [key, value] of Object.entries(old)) { if (value === undefined) delete globalThis[key]; else globalThis[key] = value; }
   }

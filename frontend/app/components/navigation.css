@@ -1,3 +1,12 @@
+.public-page { min-height: 100vh; background: var(--color-background); }
+.public-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; padding: 24px clamp(20px, 4vw, 60px); border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
+.public-header .auth-brand { margin: 0; }
+.public-header nav { display: flex; align-items: center; flex-wrap: wrap; gap: 18px; font-size: 12px; }
+.public-header .button { min-height: 40px; }
+.public-account { display: inline-flex; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.public-header button { border: 0; background: transparent; color: var(--color-primary); padding: 8px 0; cursor: pointer; }
+.public-content { max-width: 1400px; margin: 0 auto; padding: 36px clamp(20px, 4vw, 60px) 56px; }
+.public-content:focus { outline: none; }
 .app-shell { --sidebar-width: 256px; }
 .app-shell.sidebar-collapsed { --sidebar-width: 80px; }
 .app-shell .desktop-sidebar { width: var(--sidebar-width); padding: 20px 14px; overflow-y: auto; overflow-x: hidden; transition: width .18s ease; }

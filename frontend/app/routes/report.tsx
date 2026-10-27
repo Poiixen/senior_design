@@ -15,7 +15,6 @@ import { DuplicateAnalysis } from "~/components/duplicate-analysis";
 import { Icon } from "~/components/icon";
 import { ApiError, getReport } from "~/lib/api";
 import { formatNumber, type AnalysisReport } from "~/lib/report";
-import { sampleReport } from "~/lib/sample-report";
 import type { Route } from "./+types/report";
 import "./report.css";
 import "./report-overview.css";
@@ -28,7 +27,6 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export async function clientLoader({ params, request }: Route.ClientLoaderArgs) {
-  if (params.analysisId === "sample") return { report: sampleReport, isSample: true };
   if (!params.analysisId || !/^[1-9]\d*$/.test(params.analysisId)) {
     throw new Response("Report not found", { status: 404 });
   }
@@ -96,7 +94,10 @@ function exportReport(report: AnalysisReport) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export default function Report({ loaderData }: Route.ComponentProps) {
-  const { report, isSample } = loaderData;
+  return <ReportContent report={loaderData.report} isSample={false} />;
+}
+
+export function ReportContent({ report, isSample }: { report: AnalysisReport; isSample: boolean }) {
   const [searchParams] = useSearchParams();
   const requestedView = searchParams.get("view");
   const view = isDetailView(requestedView) ? requestedView : "summary";
@@ -132,7 +133,7 @@ export default function Report({ loaderData }: Route.ComponentProps) {
       {view === "outliers" && <OutlierTable report={report} />}
 
       <footer className="report-footer">
-        <Link className="button button-secondary" to="/upload">Upload another dataset <span aria-hidden="true">→</span></Link>
+        <Link className="button button-secondary" to={isSample ? "/register" : "/upload"}>{isSample ? "Create an account to analyze your data" : "Upload another dataset"} <span aria-hidden="true">→</span></Link>
         <span className="muted">{isSample ? "Sample analysis" : `Analysis #${report.analysis_id}`}</span>
       </footer>
     </div>

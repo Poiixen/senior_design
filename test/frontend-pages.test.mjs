@@ -27,11 +27,37 @@ test("the default route serves the public homepage without blocking on authentic
   assert.match(html, /Sign in/);
   assert.doesNotMatch(html, /My account|Log out/);
   assert.match(html, /ILLUSTRATIVE SAMPLE/);
-  assert.match(html, /href="\/reports\/sample"/);
+  assert.match(html, /href="\/example-report"/);
   assert.doesNotMatch(html, /class="sidebar"/);
+  assert.doesNotMatch(html, /href="\/(?:dashboard|upload|reports|settings)(?:[/?"])/);
   assert.equal(build.assets.routes["routes/home"].hasClientLoader, false);
   assert.ok(routes["routes/dashboard"]);
   assert.ok(routes["routes/upload"]);
+});
+
+test("public example and documentation render without workspace navigation", async () => {
+  const build = await import("../frontend/build/server/index.js");
+  const handle = createRequestHandler(build, "production");
+  for (const path of ["/example-report", "/example-report?view=columns", "/documentation"]) {
+    const response = await handle(new Request(`http://localhost${path}`));
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, /Public navigation/);
+    assert.doesNotMatch(html, /Application navigation|href="\/(?:dashboard|upload|reports|settings)(?:[/?"])/);
+  }
+  const legacy = await handle(new Request("http://localhost/reports/sample?view=missing"));
+  assert.equal(legacy.headers.get("Location"), "/example-report?view=missing");
+});
+
+test("workspace HTML waits for session verification before rendering navigation", async () => {
+  const build = await import("../frontend/build/server/index.js");
+  const handle = createRequestHandler(build, "production");
+  for (const path of ["/dashboard", "/upload", "/reports", "/reports/1", "/settings"]) {
+    const response = await handle(new Request(`http://localhost${path}`));
+    const html = await response.text();
+    assert.match(html, /Checking your session/);
+    assert.doesNotMatch(html, /Application navigation|class="workspace"/);
+  }
 });
 
 test("analysis overview renders actual metrics and findings without inventing a quality score", () => {

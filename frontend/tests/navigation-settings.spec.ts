@@ -21,6 +21,80 @@ async function mockApi(page: Page, signedIn = true) {
   });
 }
 
+test("public examples stay outside the workspace and private URLs require sign-in", async ({ page }) => {
+  await mockApi(page, false);
+  const workspaceRequests: string[] = [];
+  page.on("request", request => { if (/\/api\/(reports|analyze)/.test(request.url())) workspaceRequests.push(request.url()); });
+  await page.goto("/");
+  await expect(page.locator('a[href="/dashboard"], a[href="/upload"], a[href="/reports"], a[href="/settings"]')).toHaveCount(0);
+  await page.getByRole("link", { name: /Explore a sample report/ }).click();
+  await expect(page).toHaveURL(/\/example-report$/);
+  for (const name of ["Columns", "Missing values", "Duplicates", "Outliers", "Overview"]) {
+    await page.getByRole("navigation", { name: "Report views" }).getByRole("link", { name, exact: true }).click();
+    await expect(page).toHaveURL(/\/example-report(?:\?|$)/);
+    await expect(page.getByRole("complementary", { name: "Application navigation" })).toHaveCount(0);
+    await expect(page.locator('a[href="/dashboard"], a[href="/upload"], a[href="/reports"], a[href="/settings"]')).toHaveCount(0);
+  }
+  expect(workspaceRequests).toEqual([]);
+  await page.goto("/reports/sample?view=missing");
+  await expect(page).toHaveURL(/\/example-report\?view=missing$/);
+  await page.goto("/documentation");
+  await expect(page.getByRole("navigation", { name: "Public navigation" })).toBeVisible();
+  for (const path of ["/dashboard", "/upload", "/reports", "/reports/1", "/settings"]) {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/login\?next=/);
+    await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
+    await expect(page.getByRole("complementary", { name: "Application navigation" })).toHaveCount(0);
+  }
+  await page.goto("/reports/1");
+  await page.getByLabel("Email", { exact: true }).fill(user.email);
+  await page.getByLabel("Password", { exact: true }).fill("test-only-password");
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(page).toHaveURL(/\/reports\/1$/);
+  await expect(page.locator(".desktop-sidebar")).toBeVisible();
+  await page.goto("/example-report");
+  await expect(page.getByRole("navigation", { name: "Public navigation" })).toBeVisible();
+  await expect(page.locator(".desktop-sidebar")).toHaveCount(0);
+  await page.screenshot({ path: "../.run/public-example-report.png", fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("workspace palettes change surfaces in both modes, persist, synchronize, and reset", async ({ page, context }) => {
+  await mockApi(page); await page.goto("/settings");
+  const palette = page.getByRole("group", { name: "Workspace palette", exact: true });
+  const background = () => page.locator("body").evaluate(element => getComputedStyle(element).backgroundColor);
+  await page.getByRole("radio", { name: /Dark mode/ }).check();
+  await expect(palette.getByRole("radio", { name: "Neutral", exact: true })).toBeChecked();
+  expect(await background()).toBe("rgb(24, 24, 24)");
+  const darkColors = new Set<string>();
+  for (const name of ["Forest", "Slate", "Plum", "Sand"]) {
+    await palette.getByRole("radio", { name, exact: true }).check();
+    await expect(page.locator("html")).toHaveAttribute("data-palette", name.toLowerCase());
+    darkColors.add(await background());
+    await expect(page.locator(".settings-section").first()).not.toHaveCSS("background-color", await background());
+    await page.getByRole("radio", { name: /Light mode/ }).check();
+    expect(await background()).not.toBe([...darkColors].at(-1));
+    await page.getByRole("radio", { name: /Dark mode/ }).check();
+  }
+  expect(darkColors.size).toBe(4);
+  await page.reload();
+  await expect(palette.getByRole("radio", { name: "Sand", exact: true })).toBeChecked();
+  const sand = await background();
+  await page.goto("/dashboard");
+  expect(await background()).toBe(sand);
+  const second = await context.newPage(); await mockApi(second); await second.goto("/settings");
+  await second.getByRole("radio", { name: "Forest", exact: true }).check();
+  await expect(page.locator("html")).toHaveAttribute("data-palette", "forest");
+  await second.getByRole("button", { name: "Restore default palette", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-palette", "neutral");
+  expect(await background()).toBe("rgb(24, 24, 24)");
+  await second.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(() => second.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await second.screenshot({ path: "../.run/settings-palettes-mobile.png", fullPage: true });
+  await second.close();
+});
+
 test("public homepage stays general and Sign in reopens an existing product session", async ({ page }) => {
   await mockApi(page, false);
   await page.goto("/");
@@ -133,14 +207,45 @@ test("preferences synchronize across tabs and blocked storage does not break set
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 });
 
-test("temporary account failures retain the signed-in user and settings can retry", async ({ page }) => {
+test("documentation retains the signed-in account across navigation and reload", async ({ page }) => {
+  await mockApi(page);
+  const logouts: string[] = [];
+  page.on("request", request => { if (new URL(request.url()).pathname === "/api/auth/logout") logouts.push(request.url()); });
+  await page.goto("/dashboard");
+  await page.locator(".desktop-sidebar").getByRole("link", { name: "Documentation", exact: true }).click();
+  const header = page.getByRole("navigation", { name: "Public navigation" });
+  await expect(header.getByRole("link", { name: `Account settings for ${user.email}`, exact: true })).toBeVisible();
+  await expect(header.getByRole("link", { name: "Sign in", exact: true })).toHaveCount(0);
+  await expect(header.getByRole("link", { name: "Create account", exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(header.getByRole("button", { name: "Log out", exact: true })).toBeVisible();
+  await header.getByRole("link", { name: "Back to workspace", exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.locator(".desktop-sidebar .sidebar-user")).toContainText(user.email);
+  expect(logouts).toEqual([]);
+  await page.goto("/documentation");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(header.getByRole("link", { name: "Back to workspace", exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await header.getByRole("button", { name: "Log out", exact: true }).click();
+  await expect(page).toHaveURL("http://127.0.0.1:5186/");
+  expect(logouts).toHaveLength(1);
+  await page.goto("/documentation");
+  await expect(header.getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
+  await expect(header.getByRole("link", { name: "Back to workspace", exact: true })).toHaveCount(0);
+});
+
+test("workspace verification failures hide navigation and allow retry", async ({ page }) => {
   await mockApi(page); await page.goto("/dashboard");
   await expect(page.locator(".desktop-sidebar .sidebar-user")).toBeVisible();
   await page.route("**/api/auth/me", route => route.fulfill({ status: 503, json: { detail: "Temporarily unavailable" } }));
   await page.locator(".desktop-sidebar").getByRole("link", { name: "Documentation", exact: true }).click();
-  await expect(page.locator(".desktop-sidebar .sidebar-user")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Public navigation" })).toBeVisible();
+  await expect(page.getByRole("link", { name: `Account settings for ${user.email}`, exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Retry account" })).toBeVisible();
-  await page.goto("/settings"); await expect(page.getByRole("heading", { name: "Unable to load settings" })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Application navigation" })).toHaveCount(0);
+  await page.goto("/settings"); await expect(page.getByRole("heading", { name: "Unable to verify workspace access" })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Application navigation" })).toHaveCount(0);
   await page.unroute("**/api/auth/me");
   await page.getByRole("button", { name: "Try again", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();

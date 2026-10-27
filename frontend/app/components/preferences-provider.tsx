@@ -31,6 +31,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     const resolved = resolveAppearance(preferences, system.dark, system.reduced);
     document.documentElement.dataset.theme = resolved.theme;
     document.documentElement.dataset.accent = preferences.accent;
+    document.documentElement.dataset.palette = preferences.palette;
     document.documentElement.dataset.motion = resolved.motion;
     document.documentElement.dataset.density = preferences.density;
   }, [preferences, system, ready]);

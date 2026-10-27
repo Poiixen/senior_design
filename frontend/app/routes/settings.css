@@ -28,8 +28,8 @@
 .theme-preview { display: grid; gap: 5px; padding: 18px 30px 14px 14px; margin-bottom: 7px; border-radius: 5px; background: #eff1ec; height: 76px; }
 .theme-preview i { height: 7px; border-radius: 2px; background: #d1d5cd; }
 .theme-preview i:last-child { width: 60%; }
-.theme-preview-dark { background: #1e2432; }.theme-preview-dark i { background: #485066; }
-.theme-preview-system { background: linear-gradient(90deg, #eff1ec 50%, #1e2432 50%); }.theme-preview-system i { background: #9c9ead; }
+.theme-preview-dark { background: #242424; }.theme-preview-dark i { background: #484848; }
+.theme-preview-system { background: linear-gradient(90deg, #eff1ec 50%, #242424 50%); }.theme-preview-system i { background: #9c9ead; }
 .settings-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, 200px) auto; gap: 20px; align-items: center; padding: 22px 0; border-top: 1px solid var(--color-border); margin-top: 18px; }
 .settings-row + .settings-row { margin-top: 0; }
 .settings-row label { font-size: 13px; font-weight: 650; }
@@ -46,3 +46,8 @@
 .settings-confirmation > div { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; }
 @media (max-width: 900px) { .settings-row { grid-template-columns: minmax(0, 1fr) minmax(150px, 200px); }.settings-row > button { grid-column: 2; justify-self: start; }.settings-reset { align-items: flex-start; flex-direction: column; } }
 @media (max-width: 550px) { .settings-section { padding: 20px; }.settings-choices { gap: 10px; }.settings-choices label { padding: 10px; }.settings-choices label > span:last-child { display: none; }.theme-preview { height: 66px; padding-inline: 8px; }.settings-section-heading { flex-wrap: wrap; }.settings-row { grid-template-columns: 1fr; gap: 12px; }.settings-row > button { grid-column: 1; }.settings-account { flex-wrap: wrap; }.settings-account .button { width: 100%; } }
+
+.settings-palette-choices label { flex-direction: column; gap: 10px; }
+.settings-palette-choices input { top: 8px; right: 8px; width: 14px; height: 14px; margin: 0; opacity: 1; accent-color: var(--color-primary); }
+.settings-palette-swatch { display: flex; width: 100%; height: 42px; overflow: hidden; border: 1px solid var(--color-border); border-radius: 6px; pointer-events: none; }
+.settings-palette-swatch i { flex: 1; }

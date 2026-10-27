@@ -10,7 +10,6 @@ import {
 
 import type { Route } from "./+types/root";
 import "./app.css";
-import { AppShell } from "./components/app-shell";
 import { PreferencesProvider } from "./components/preferences-provider";
 import { AccountProvider } from "./components/account-provider";
 import { initializeAppearance } from "./lib/preferences";
@@ -50,12 +49,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <PreferencesProvider><AccountProvider><AppShell><Outlet /></AppShell></AccountProvider></PreferencesProvider>;
+  return <PreferencesProvider><AccountProvider><Outlet /></AccountProvider></PreferencesProvider>;
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let message = "Unable to open this page";
-  let details = "Please try again or return to the upload screen.";
+  let details = "Please try again or return to the home page.";
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
@@ -73,7 +72,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     <main className="standalone-error panel">
       <h1>{message}</h1>
       <p>{details}</p>
-      <Link className="button button-primary" to="/upload">Upload a dataset</Link>
+      <Link className="button button-primary" to="/">Back to home</Link>
       {stack && (
         <pre className="w-full p-4 overflow-x-auto">
           <code>{stack}</code>

@@ -36,6 +36,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     <main className="auth-main" id="main-content" tabIndex={-1}>{children}</main>
   </div>;
 
+  if (pathname === "/example-report" || pathname === "/documentation" || pathname === "/reports/sample") return <div className="public-page">
+    <a className="skip-link" href="#main-content">Skip to content</a>
+    <header className="public-header"><Link to="/" className="auth-brand" aria-label="Team Science home"><span className="brand-mark">TS</span><strong>Team Science</strong></Link><nav aria-label="Public navigation"><Link to="/">Home</Link><Link to="/example-report">Example report</Link><Link to="/documentation">Documentation</Link>{account.user ? <><Link className="button button-primary" to="/dashboard">Back to workspace</Link><Link className="public-account" to="/settings" aria-label={`Account settings for ${account.user.email}`}><span className="avatar">{initials}</span><span>{account.user.email}</span></Link><button className="settings-reset-one" type="button" disabled={account.loggingOut} onClick={() => void account.logout()}>{account.loggingOut ? "Logging out?" : "Log out"}</button></> : account.loading ? <span className="muted" role="status">Checking account?</span> : <><Link to="/login">Sign in</Link><Link className="button button-primary" to="/register">Create account</Link></>}</nav></header>
+    {account.error && <div className="account-notice notice notice-error" role="alert"><span>{account.error}</span><button type="button" onClick={account.refresh}>Retry account</button></div>}
+    <main className="public-content" id="main-content" tabIndex={-1}>{children}</main>
+  </div>;
+
   const sidebarContent = (mobile = false) => <>
     <div className="sidebar-header"><Link to="/dashboard" className="brand" aria-label="Team Science overview" title="Team Science overview"><span className="brand-mark">TS</span><span className="nav-copy"><strong>Team Science</strong><small>DATA WORKSPACE</small></span></Link>
       {mobile ? <button type="button" className="icon-button" onClick={closeDrawer} aria-label="Close navigation"><Icon name="x" /></button> : <button type="button" className="icon-button sidebar-toggle" onClick={() => update({ sidebarCollapsed: !preferences.sidebarCollapsed })} aria-expanded={!preferences.sidebarCollapsed} aria-controls="desktop-navigation" aria-label={preferences.sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} title={preferences.sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}><Icon name={preferences.sidebarCollapsed ? "expand" : "collapse"} /></button>}

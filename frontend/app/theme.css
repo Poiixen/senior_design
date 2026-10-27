@@ -21,12 +21,12 @@
   --color-primary: #b0a1ff;
   --color-on-primary: #181a29;
   --color-accent-hover: #c0b4ff;
-  --color-text: #e9eee8;
-  --color-muted: #a9b4ad;
-  --color-border: #37453e;
-  --color-background: #151e19;
-  --color-surface: #1e2a23;
-  --color-soft: #26342c;
+  --color-text: #ededed;
+  --color-muted: #b0b0b0;
+  --color-border: #3d3d3d;
+  --color-background: #181818;
+  --color-surface: #242424;
+  --color-soft: #2e2e2e;
   --color-accent-soft: #34304c;
   --color-info: #9cbeff; --color-info-soft: #25364a;
   --color-success: #85dfb2; --color-success-soft: #243e30;
@@ -34,7 +34,40 @@
   --color-danger: #ffaba8; --color-danger-soft: #442a2a;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) { color-scheme: dark; --color-primary: #b0a1ff; --color-on-primary: #181a29; --color-accent-hover: #c0b4ff; --color-text: #e9eee8; --color-muted: #a9b4ad; --color-border: #37453e; --color-background: #151e19; --color-surface: #1e2a23; --color-soft: #26342c; --color-accent-soft: #34304c; --color-info: #9cbeff; --color-info-soft: #25364a; --color-success: #85dfb2; --color-success-soft: #243e30; --color-warning: #f1c87e; --color-warning-soft: #403622; --color-danger: #ffaba8; --color-danger-soft: #442a2a; }
+  :root:not([data-theme]) { color-scheme: dark; --color-primary: #b0a1ff; --color-on-primary: #181a29; --color-accent-hover: #c0b4ff; --color-text: #ededed; --color-muted: #b0b0b0; --color-border: #3d3d3d; --color-background: #181818; --color-surface: #242424; --color-soft: #2e2e2e; --color-accent-soft: #34304c; --color-info: #9cbeff; --color-info-soft: #25364a; --color-success: #85dfb2; --color-success-soft: #243e30; --color-warning: #f1c87e; --color-warning-soft: #403622; --color-danger: #ffaba8; --color-danger-soft: #442a2a; }
+}
+/* Workspace palettes follow the resolved light/dark color scheme. */
+:root[data-palette="forest"] {
+  --color-background: light-dark(#f7faf7, #151e19);
+  --color-surface: light-dark(#ffffff, #1e2a23);
+  --color-soft: light-dark(#edf3ee, #26342c);
+  --color-border: light-dark(#dce5dd, #37453e);
+  --color-text: light-dark(#1c2921, #e9eee8);
+  --color-muted: light-dark(#607068, #a9b4ad);
+}
+:root[data-palette="slate"] {
+  --color-background: light-dark(#f7f9fc, #171c26);
+  --color-surface: light-dark(#ffffff, #222a36);
+  --color-soft: light-dark(#edf1f7, #2c3543);
+  --color-border: light-dark(#dce2ec, #3d485b);
+  --color-text: light-dark(#1c2636, #e8edf5);
+  --color-muted: light-dark(#626f82, #acb7c9);
+}
+:root[data-palette="plum"] {
+  --color-background: light-dark(#fcf8fc, #201923);
+  --color-surface: light-dark(#ffffff, #2c2330);
+  --color-soft: light-dark(#f4edf6, #382d3d);
+  --color-border: light-dark(#e8dfea, #4b3c51);
+  --color-text: light-dark(#2c2031, #f1e9f4);
+  --color-muted: light-dark(#78647e, #beadc5);
+}
+:root[data-palette="sand"] {
+  --color-background: light-dark(#fcfaf6, #211d18);
+  --color-surface: light-dark(#ffffff, #2d2721);
+  --color-soft: light-dark(#f5efe5, #393128);
+  --color-border: light-dark(#e7dfd2, #4c4135);
+  --color-text: light-dark(#30281e, #f2ece3);
+  --color-muted: light-dark(#786a58, #bfb2a1);
 }
 html, body { background: var(--color-background); color: var(--color-text); }
 :root[data-accent="violet"] { --accent-light: #6853e8; --accent-dark: #b0a1ff; --accent-hover-light: #5943d3; --accent-hover-dark: #c0b4ff; }
@@ -57,7 +90,7 @@ html, body { background: var(--color-background); color: var(--color-text); }
 .landing-product-preview { background: var(--color-surface); }
 .landing-account { flex-wrap: wrap; justify-content: flex-end; }
 .landing-account .account-action { padding: 0; font-size: 12px; }
-.report-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.report-sr-only { position: absolute; top: 0; left: 0; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .settings-section > .dashboard-text-link { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; }
 .analysis-donut svg > circle:first-child { stroke: var(--color-soft); }
 .profile-chart text { fill: var(--color-muted); }
