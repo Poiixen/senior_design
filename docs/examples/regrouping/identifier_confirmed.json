@@ -1,0 +1,690 @@
+{
+  "description": "The same selection after the user confirms the column is meaningful.",
+  "dataset": "docs/examples/demo-pack/datasets/identifier_like.csv",
+  "earlier_requests": [],
+  "request": {
+    "comparison_type": "categorical_numeric",
+    "group_column": "customer_id",
+    "value_column": "spend",
+    "confirm_columns": [
+      "customer_id"
+    ]
+  },
+  "status": 201,
+  "response": {
+    "comparison_id": 1,
+    "analysis_id": 1,
+    "created_at": "2026-10-26T14:19:29.814660Z",
+    "comparison_type": "categorical_numeric",
+    "design": "independent_groups",
+    "selection": {
+      "group_column": "customer_id",
+      "value_column": "spend"
+    },
+    "status": "ok",
+    "reason": null,
+    "rows": {
+      "total": 40,
+      "included": 40,
+      "excluded": 0,
+      "exclusion_reasons": {
+        "missing_group_value": 0,
+        "missing_or_non_finite_value": 0
+      }
+    },
+    "overall": {
+      "count": 40,
+      "mean": 97.3725,
+      "median": 95.5,
+      "std_dev": 17.038884450964897,
+      "min": 65.1,
+      "q1": 84.975,
+      "q3": 109.6,
+      "max": 131.6
+    },
+    "groups": [
+      {
+        "label": "C000",
+        "count": 1,
+        "mean": 88.6,
+        "median": 88.6,
+        "std_dev": null,
+        "min": 88.6,
+        "q1": 88.6,
+        "q3": 88.6,
+        "max": 88.6
+      },
+      {
+        "label": "C001",
+        "count": 1,
+        "mean": 68.5,
+        "median": 68.5,
+        "std_dev": null,
+        "min": 68.5,
+        "q1": 68.5,
+        "q3": 68.5,
+        "max": 68.5
+      },
+      {
+        "label": "C002",
+        "count": 1,
+        "mean": 87.9,
+        "median": 87.9,
+        "std_dev": null,
+        "min": 87.9,
+        "q1": 87.9,
+        "q3": 87.9,
+        "max": 87.9
+      },
+      {
+        "label": "C003",
+        "count": 1,
+        "mean": 99.9,
+        "median": 99.9,
+        "std_dev": null,
+        "min": 99.9,
+        "q1": 99.9,
+        "q3": 99.9,
+        "max": 99.9
+      },
+      {
+        "label": "C004",
+        "count": 1,
+        "mean": 74.4,
+        "median": 74.4,
+        "std_dev": null,
+        "min": 74.4,
+        "q1": 74.4,
+        "q3": 74.4,
+        "max": 74.4
+      },
+      {
+        "label": "C005",
+        "count": 1,
+        "mean": 108.7,
+        "median": 108.7,
+        "std_dev": null,
+        "min": 108.7,
+        "q1": 108.7,
+        "q3": 108.7,
+        "max": 108.7
+      },
+      {
+        "label": "C006",
+        "count": 1,
+        "mean": 85.5,
+        "median": 85.5,
+        "std_dev": null,
+        "min": 85.5,
+        "q1": 85.5,
+        "q3": 85.5,
+        "max": 85.5
+      },
+      {
+        "label": "C007",
+        "count": 1,
+        "mean": 77.8,
+        "median": 77.8,
+        "std_dev": null,
+        "min": 77.8,
+        "q1": 77.8,
+        "q3": 77.8,
+        "max": 77.8
+      },
+      {
+        "label": "C008",
+        "count": 1,
+        "mean": 92.1,
+        "median": 92.1,
+        "std_dev": null,
+        "min": 92.1,
+        "q1": 92.1,
+        "q3": 92.1,
+        "max": 92.1
+      },
+      {
+        "label": "C009",
+        "count": 1,
+        "mean": 119.0,
+        "median": 119.0,
+        "std_dev": null,
+        "min": 119.0,
+        "q1": 119.0,
+        "q3": 119.0,
+        "max": 119.0
+      },
+      {
+        "label": "C010",
+        "count": 1,
+        "mean": 102.6,
+        "median": 102.6,
+        "std_dev": null,
+        "min": 102.6,
+        "q1": 102.6,
+        "q3": 102.6,
+        "max": 102.6
+      },
+      {
+        "label": "C011",
+        "count": 1,
+        "mean": 81.6,
+        "median": 81.6,
+        "std_dev": null,
+        "min": 81.6,
+        "q1": 81.6,
+        "q3": 81.6,
+        "max": 81.6
+      },
+      {
+        "label": "C012",
+        "count": 1,
+        "mean": 89.3,
+        "median": 89.3,
+        "std_dev": null,
+        "min": 89.3,
+        "q1": 89.3,
+        "q3": 89.3,
+        "max": 89.3
+      },
+      {
+        "label": "C013",
+        "count": 1,
+        "mean": 114.9,
+        "median": 114.9,
+        "std_dev": null,
+        "min": 114.9,
+        "q1": 114.9,
+        "q3": 114.9,
+        "max": 114.9
+      },
+      {
+        "label": "C014",
+        "count": 1,
+        "mean": 80.3,
+        "median": 80.3,
+        "std_dev": null,
+        "min": 80.3,
+        "q1": 80.3,
+        "q3": 80.3,
+        "max": 80.3
+      },
+      {
+        "label": "C015",
+        "count": 1,
+        "mean": 114.8,
+        "median": 114.8,
+        "std_dev": null,
+        "min": 114.8,
+        "q1": 114.8,
+        "q3": 114.8,
+        "max": 114.8
+      },
+      {
+        "label": "C016",
+        "count": 1,
+        "mean": 92.9,
+        "median": 92.9,
+        "std_dev": null,
+        "min": 92.9,
+        "q1": 92.9,
+        "q3": 92.9,
+        "max": 92.9
+      },
+      {
+        "label": "C017",
+        "count": 1,
+        "mean": 88.8,
+        "median": 88.8,
+        "std_dev": null,
+        "min": 88.8,
+        "q1": 88.8,
+        "q3": 88.8,
+        "max": 88.8
+      },
+      {
+        "label": "C018",
+        "count": 1,
+        "mean": 122.9,
+        "median": 122.9,
+        "std_dev": null,
+        "min": 122.9,
+        "q1": 122.9,
+        "q3": 122.9,
+        "max": 122.9
+      },
+      {
+        "label": "C019",
+        "count": 1,
+        "mean": 131.6,
+        "median": 131.6,
+        "std_dev": null,
+        "min": 131.6,
+        "q1": 131.6,
+        "q3": 131.6,
+        "max": 131.6
+      },
+      {
+        "label": "C020",
+        "count": 1,
+        "mean": 90.8,
+        "median": 90.8,
+        "std_dev": null,
+        "min": 90.8,
+        "q1": 90.8,
+        "q3": 90.8,
+        "max": 90.8
+      },
+      {
+        "label": "C021",
+        "count": 1,
+        "mean": 105.5,
+        "median": 105.5,
+        "std_dev": null,
+        "min": 105.5,
+        "q1": 105.5,
+        "q3": 105.5,
+        "max": 105.5
+      },
+      {
+        "label": "C022",
+        "count": 1,
+        "mean": 75.8,
+        "median": 75.8,
+        "std_dev": null,
+        "min": 75.8,
+        "q1": 75.8,
+        "q3": 75.8,
+        "max": 75.8
+      },
+      {
+        "label": "C023",
+        "count": 1,
+        "mean": 101.5,
+        "median": 101.5,
+        "std_dev": null,
+        "min": 101.5,
+        "q1": 101.5,
+        "q3": 101.5,
+        "max": 101.5
+      },
+      {
+        "label": "C024",
+        "count": 1,
+        "mean": 65.1,
+        "median": 65.1,
+        "std_dev": null,
+        "min": 65.1,
+        "q1": 65.1,
+        "q3": 65.1,
+        "max": 65.1
+      },
+      {
+        "label": "C025",
+        "count": 1,
+        "mean": 101.5,
+        "median": 101.5,
+        "std_dev": null,
+        "min": 101.5,
+        "q1": 101.5,
+        "q3": 101.5,
+        "max": 101.5
+      },
+      {
+        "label": "C026",
+        "count": 1,
+        "mean": 83.4,
+        "median": 83.4,
+        "std_dev": null,
+        "min": 83.4,
+        "q1": 83.4,
+        "q3": 83.4,
+        "max": 83.4
+      },
+      {
+        "label": "C027",
+        "count": 1,
+        "mean": 71.5,
+        "median": 71.5,
+        "std_dev": null,
+        "min": 71.5,
+        "q1": 71.5,
+        "q3": 71.5,
+        "max": 71.5
+      },
+      {
+        "label": "C028",
+        "count": 1,
+        "mean": 127.6,
+        "median": 127.6,
+        "std_dev": null,
+        "min": 127.6,
+        "q1": 127.6,
+        "q3": 127.6,
+        "max": 127.6
+      },
+      {
+        "label": "C029",
+        "count": 1,
+        "mean": 121.7,
+        "median": 121.7,
+        "std_dev": null,
+        "min": 121.7,
+        "q1": 121.7,
+        "q3": 121.7,
+        "max": 121.7
+      },
+      {
+        "label": "C030",
+        "count": 1,
+        "mean": 118.0,
+        "median": 118.0,
+        "std_dev": null,
+        "min": 118.0,
+        "q1": 118.0,
+        "q3": 118.0,
+        "max": 118.0
+      },
+      {
+        "label": "C031",
+        "count": 1,
+        "mean": 102.2,
+        "median": 102.2,
+        "std_dev": null,
+        "min": 102.2,
+        "q1": 102.2,
+        "q3": 102.2,
+        "max": 102.2
+      },
+      {
+        "label": "C032",
+        "count": 1,
+        "mean": 93.3,
+        "median": 93.3,
+        "std_dev": null,
+        "min": 93.3,
+        "q1": 93.3,
+        "q3": 93.3,
+        "max": 93.3
+      },
+      {
+        "label": "C033",
+        "count": 1,
+        "mean": 96.6,
+        "median": 96.6,
+        "std_dev": null,
+        "min": 96.6,
+        "q1": 96.6,
+        "q3": 96.6,
+        "max": 96.6
+      },
+      {
+        "label": "C034",
+        "count": 1,
+        "mean": 82.6,
+        "median": 82.6,
+        "std_dev": null,
+        "min": 82.6,
+        "q1": 82.6,
+        "q3": 82.6,
+        "max": 82.6
+      },
+      {
+        "label": "C035",
+        "count": 1,
+        "mean": 109.9,
+        "median": 109.9,
+        "std_dev": null,
+        "min": 109.9,
+        "q1": 109.9,
+        "q3": 109.9,
+        "max": 109.9
+      },
+      {
+        "label": "C036",
+        "count": 1,
+        "mean": 94.4,
+        "median": 94.4,
+        "std_dev": null,
+        "min": 94.4,
+        "q1": 94.4,
+        "q3": 94.4,
+        "max": 94.4
+      },
+      {
+        "label": "C037",
+        "count": 1,
+        "mean": 117.8,
+        "median": 117.8,
+        "std_dev": null,
+        "min": 117.8,
+        "q1": 117.8,
+        "q3": 117.8,
+        "max": 117.8
+      },
+      {
+        "label": "C038",
+        "count": 1,
+        "mean": 109.5,
+        "median": 109.5,
+        "std_dev": null,
+        "min": 109.5,
+        "q1": 109.5,
+        "q3": 109.5,
+        "max": 109.5
+      },
+      {
+        "label": "C039",
+        "count": 1,
+        "mean": 104.1,
+        "median": 104.1,
+        "std_dev": null,
+        "min": 104.1,
+        "q1": 104.1,
+        "q3": 104.1,
+        "max": 104.1
+      }
+    ],
+    "test": {
+      "method": {
+        "key": "kruskal_wallis",
+        "name": "Kruskal-Wallis H test",
+        "evaluates": "Whether values tend to be higher in some groups than in others, using the ranks of the values rather than the values themselves. It is not a test of means.",
+        "null_hypothesis": "All groups come from the same distribution.",
+        "assumptions": [
+          "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+          "Values can be meaningfully ranked.",
+          "It can be read as a comparison of medians only when every group's distribution has the same shape and spread.",
+          "A significant result means at least one group differs; it does not say which. Pairwise follow-up tests are not provided."
+        ]
+      },
+      "status": "unavailable",
+      "reason": "Every group has a single value; the test needs more observations than groups.",
+      "group_sizes": [
+        {
+          "label": "C000",
+          "count": 1
+        },
+        {
+          "label": "C001",
+          "count": 1
+        },
+        {
+          "label": "C002",
+          "count": 1
+        },
+        {
+          "label": "C003",
+          "count": 1
+        },
+        {
+          "label": "C004",
+          "count": 1
+        },
+        {
+          "label": "C005",
+          "count": 1
+        },
+        {
+          "label": "C006",
+          "count": 1
+        },
+        {
+          "label": "C007",
+          "count": 1
+        },
+        {
+          "label": "C008",
+          "count": 1
+        },
+        {
+          "label": "C009",
+          "count": 1
+        },
+        {
+          "label": "C010",
+          "count": 1
+        },
+        {
+          "label": "C011",
+          "count": 1
+        },
+        {
+          "label": "C012",
+          "count": 1
+        },
+        {
+          "label": "C013",
+          "count": 1
+        },
+        {
+          "label": "C014",
+          "count": 1
+        },
+        {
+          "label": "C015",
+          "count": 1
+        },
+        {
+          "label": "C016",
+          "count": 1
+        },
+        {
+          "label": "C017",
+          "count": 1
+        },
+        {
+          "label": "C018",
+          "count": 1
+        },
+        {
+          "label": "C019",
+          "count": 1
+        },
+        {
+          "label": "C020",
+          "count": 1
+        },
+        {
+          "label": "C021",
+          "count": 1
+        },
+        {
+          "label": "C022",
+          "count": 1
+        },
+        {
+          "label": "C023",
+          "count": 1
+        },
+        {
+          "label": "C024",
+          "count": 1
+        },
+        {
+          "label": "C025",
+          "count": 1
+        },
+        {
+          "label": "C026",
+          "count": 1
+        },
+        {
+          "label": "C027",
+          "count": 1
+        },
+        {
+          "label": "C028",
+          "count": 1
+        },
+        {
+          "label": "C029",
+          "count": 1
+        },
+        {
+          "label": "C030",
+          "count": 1
+        },
+        {
+          "label": "C031",
+          "count": 1
+        },
+        {
+          "label": "C032",
+          "count": 1
+        },
+        {
+          "label": "C033",
+          "count": 1
+        },
+        {
+          "label": "C034",
+          "count": 1
+        },
+        {
+          "label": "C035",
+          "count": 1
+        },
+        {
+          "label": "C036",
+          "count": 1
+        },
+        {
+          "label": "C037",
+          "count": 1
+        },
+        {
+          "label": "C038",
+          "count": 1
+        },
+        {
+          "label": "C039",
+          "count": 1
+        }
+      ]
+    },
+    "warnings": [],
+    "note": "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+    "identifier_review": [
+      {
+        "column": "customer_id",
+        "likely_identifier": true,
+        "reasons": [
+          "40 of 40 non-missing values are distinct (100%), so nearly every row has its own value.",
+          "The column name contains identifier-like word(s): id, and 100% of its values are distinct."
+        ],
+        "signals": {
+          "non_missing_values": 40,
+          "distinct_values": 40,
+          "distinct_ratio": 1.0,
+          "name_words": [
+            "id"
+          ],
+          "minimum_rows": 10
+        },
+        "note": "This is a review flag based on the signals above, not a classification. Confirm the column if it is a meaningful grouping.",
+        "role": "group",
+        "confirmed": true
+      }
+    ]
+  }
+}

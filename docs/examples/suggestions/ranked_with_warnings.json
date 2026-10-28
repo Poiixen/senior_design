@@ -1,0 +1,284 @@
+{
+  "description": "Missing values, repeated rows and one saved mean comparison; the Welch result carries its group-size warnings.",
+  "request": {
+    "comparison_ids": [
+      1
+    ]
+  },
+  "response": {
+    "analysis_id": 1,
+    "source": "fallback",
+    "suggestions": [
+      {
+        "title": "Review missing income values",
+        "affected_columns": [
+          "income"
+        ],
+        "explanation": "income is missing in 25.00% of rows. Missing values reduce the rows any analysis of this column can use, and what is missing matters for how results are read.",
+        "evidence": [
+          "10 of 40 rows are missing income (25.00%)."
+        ],
+        "next_steps": [
+          "Confirm why income is missing before choosing how to handle it.",
+          "Check whether the missing values concentrate in particular groups."
+        ],
+        "finding_id": "missing_values-income",
+        "finding_type": "missing_values",
+        "priority": "medium",
+        "priority_percent": 60,
+        "priority_reason": "25.00% of all rows are missing this column.",
+        "evidence_refs": [
+          {
+            "result_type": "missing_values",
+            "analysis_id": 1,
+            "comparison_id": null,
+            "column": "income"
+          }
+        ],
+        "evidence_values": {
+          "missing_count": 10,
+          "present_count": 30,
+          "total_rows": 40,
+          "missing_percentage": 25.0,
+          "severity": "high"
+        },
+        "warnings": [],
+        "exploratory": false,
+        "visual": {
+          "chart_type": "bar",
+          "title": "Missing and present values in income",
+          "source": {
+            "result_type": "missing_values",
+            "analysis_id": 1,
+            "comparison_id": null,
+            "column": "income"
+          },
+          "data": {
+            "categories": [
+              "Missing",
+              "Present"
+            ],
+            "values": [
+              10,
+              30
+            ]
+          },
+          "x_label": "Value status",
+          "y_label": "Rows",
+          "units": "rows",
+          "percent_denominator": "all rows in the report",
+          "warnings": [],
+          "unavailable_fields": [],
+          "fallback_reason": null
+        }
+      },
+      {
+        "title": "Compare score across group groups",
+        "affected_columns": [
+          "group",
+          "score"
+        ],
+        "explanation": "Warnings: Group(s) 'B', 'A' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers. Welch's independent-samples t-test compares the mean of score across the groups defined by group. Observed mean score: B 21.50 (n=22), A 12.06 (n=18). The p-value (5.25e-21) is below 0.05, so the data show evidence of a difference in means between groups. This describes the groups in this dataset and does not show what causes any difference.",
+        "evidence": [
+          "Method: Welch's independent-samples t-test (mean comparison).",
+          "t = 19.88, p-value = 5.25e-21.",
+          "Group sizes: B n=22, A n=18.",
+          "40 of 40 rows were compared."
+        ],
+        "next_steps": [
+          "Use the chart to judge how large the observed differences are in practical terms.",
+          "Consider whether other columns could account for the pattern before drawing conclusions."
+        ],
+        "finding_id": "group_difference-c1",
+        "finding_type": "group_difference",
+        "priority": "medium",
+        "priority_percent": 52,
+        "priority_reason": "40 of 40 rows were compared, with an observed gap of 6.34 standard deviations.",
+        "evidence_refs": [
+          {
+            "result_type": "comparison",
+            "analysis_id": 1,
+            "comparison_id": 1,
+            "column": null
+          }
+        ],
+        "evidence_values": {
+          "method_key": "welch_t_test",
+          "method_name": "Welch's independent-samples t-test",
+          "comparison_basis": "means",
+          "statistic_name": "t",
+          "statistic": 19.877347258995258,
+          "degrees_of_freedom": 36.0262095520562,
+          "p_value": 5.254070412505255e-21,
+          "significant_at_0_05": true,
+          "effect_size": 6.335525936249403,
+          "effect_measure": "standardized_mean_difference",
+          "mean_difference": 9.444444444444445,
+          "difference_order": [
+            "B",
+            "A"
+          ],
+          "group_sizes": [
+            {
+              "label": "B",
+              "count": 22
+            },
+            {
+              "label": "A",
+              "count": 18
+            }
+          ],
+          "groups": [
+            {
+              "label": "B",
+              "count": 22,
+              "mean": 21.5,
+              "median": 21.0
+            },
+            {
+              "label": "A",
+              "count": 18,
+              "mean": 12.055555555555555,
+              "median": 12.0
+            }
+          ],
+          "rows_included": 40,
+          "rows_total": 40
+        },
+        "warnings": [
+          "Group(s) 'B', 'A' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers."
+        ],
+        "exploratory": false,
+        "visual": {
+          "chart_type": "grouped_box",
+          "title": "score by group",
+          "source": {
+            "result_type": "comparison",
+            "analysis_id": 1,
+            "comparison_id": 1,
+            "column": null
+          },
+          "data": {
+            "groups": [
+              {
+                "label": "B",
+                "count": 22,
+                "mean": 21.5,
+                "min": 20.0,
+                "q1": 20.0,
+                "median": 21.0,
+                "q3": 22.75,
+                "max": 24.0,
+                "whisker_low": null,
+                "whisker_high": null,
+                "outlier_count": null
+              },
+              {
+                "label": "A",
+                "count": 18,
+                "mean": 12.055555555555555,
+                "min": 10.0,
+                "q1": 11.0,
+                "median": 12.0,
+                "q3": 13.0,
+                "max": 14.0,
+                "whisker_low": null,
+                "whisker_high": null,
+                "outlier_count": null
+              }
+            ]
+          },
+          "x_label": "group",
+          "y_label": "score",
+          "units": null,
+          "percent_denominator": null,
+          "warnings": [],
+          "unavailable_fields": [
+            "whisker_low",
+            "whisker_high",
+            "outlier_count"
+          ],
+          "fallback_reason": null
+        }
+      },
+      {
+        "title": "Review repeated rows",
+        "affected_columns": [
+          "id",
+          "income"
+        ],
+        "explanation": "4 rows repeat an earlier row (10.00% of rows), using the report's duplicate definition. Repeated rows can give those records extra weight in later comparisons.",
+        "evidence": [
+          "4 of 40 rows repeat an earlier row (10.00%).",
+          "1 distinct rows are repeated, covering 5 rows in total."
+        ],
+        "next_steps": [
+          "Inspect the repeated rows to see whether they are true copies or separate records that happen to match.",
+          "Decide with the data owner whether they belong in the analysis."
+        ],
+        "finding_id": "duplicates",
+        "finding_type": "duplicates",
+        "priority": "low",
+        "priority_percent": 34,
+        "priority_reason": "10.00% of all rows repeat an earlier row.",
+        "evidence_refs": [
+          {
+            "result_type": "duplicates",
+            "analysis_id": 1,
+            "comparison_id": null,
+            "column": null
+          }
+        ],
+        "evidence_values": {
+          "duplicate_count": 4,
+          "total_rows": 40,
+          "duplicate_percentage": 10.0,
+          "duplicate_group_count": 1,
+          "rows_in_duplicate_groups": 5,
+          "largest_duplicate_group_size": 5
+        },
+        "warnings": [],
+        "exploratory": false,
+        "visual": {
+          "chart_type": "bar",
+          "title": "Repeated rows and other rows",
+          "source": {
+            "result_type": "duplicates",
+            "analysis_id": 1,
+            "comparison_id": null,
+            "column": null
+          },
+          "data": {
+            "categories": [
+              "Repeated rows (extra copies)",
+              "Other rows"
+            ],
+            "values": [
+              4,
+              36
+            ]
+          },
+          "x_label": "Row type",
+          "y_label": "Rows",
+          "units": "rows",
+          "percent_denominator": "all rows in the report",
+          "warnings": [],
+          "unavailable_fields": [],
+          "fallback_reason": null
+        }
+      }
+    ],
+    "comparison_ids_used": [
+      1
+    ],
+    "evidence_fingerprint": "e2d557a617a50ef0",
+    "total_findings": 3,
+    "offset": 0,
+    "has_more": false,
+    "unavailable_analyses": [
+      "anova",
+      "distribution",
+      "regrouping"
+    ]
+  }
+}

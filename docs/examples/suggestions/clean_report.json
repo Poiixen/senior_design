@@ -1,0 +1,19 @@
+{
+  "description": "A clean report returns no findings.",
+  "request": {},
+  "response": {
+    "analysis_id": 1,
+    "source": "fallback",
+    "suggestions": [],
+    "comparison_ids_used": [],
+    "evidence_fingerprint": "aed2db130f394a7a",
+    "total_findings": 0,
+    "offset": 0,
+    "has_more": false,
+    "unavailable_analyses": [
+      "anova",
+      "distribution",
+      "regrouping"
+    ]
+  }
+}

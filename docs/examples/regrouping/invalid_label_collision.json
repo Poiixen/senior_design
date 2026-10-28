@@ -1,0 +1,25 @@
+{
+  "description": "An invalid mapping is rejected with 400 and nothing is saved.",
+  "dataset": "docs/examples/demo-pack/datasets/sparse_categories.csv",
+  "earlier_requests": [],
+  "request": {
+    "comparison_type": "categorical_categorical",
+    "group_column": "education",
+    "outcome_column": "income",
+    "category_mappings": {
+      "education": [
+        {
+          "label": "HS",
+          "categories": [
+            "MA",
+            "PhD"
+          ]
+        }
+      ]
+    }
+  },
+  "status": 400,
+  "response": {
+    "detail": "The label 'HS' collides with an existing category of column 'education' that is not part of this combination. Include that category in the combination or choose another label."
+  }
+}
