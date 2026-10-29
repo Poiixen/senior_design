@@ -64,6 +64,16 @@ def _apply_ai(suggestions: list, candidates: dict, complete) -> bool:
     return True
 
 
+def deterministic_findings(evidence, limit: int) -> tuple:
+    """The top ``limit`` findings with their deterministic text, and the total.
+
+    Used by callers that ground their own output in the same findings the
+    suggestions endpoint ranks, without asking a model for new wording.
+    """
+    ranked = rank(collect_candidates(evidence))
+    return [_suggestion(candidate, score) for candidate, score in ranked[:limit]], len(ranked)
+
+
 def generate_suggestions(
     analysis_service,
     analysis_id: int,

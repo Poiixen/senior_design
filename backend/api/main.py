@@ -25,7 +25,9 @@ from backend.database.dataset_store import DatasetStore
 from backend.diagnostics.comparison_common import ComparisonError
 from backend.ingestion.dataset_loader import DatasetLoadError, SUPPORTED_FILE_EXTENSIONS, load_dataset
 from backend.models import User
+from backend.models.conversations import QuestionRequest
 from backend.models.suggestions import SuggestionRequest
+from backend.services import conversations
 from backend.services.analysis_service import AnalysisService, DatasetRowsUnavailable
 from backend.services.suggestions import InvalidComparisonSelection, generate_suggestions
 from backend.services.suggestions.ai_wording import default_complete
@@ -485,6 +487,81 @@ def create_suggestions(
         )
     except InvalidComparisonSelection as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    if response is None:
+        raise HTTPException(status_code=404, detail=REPORT_NOT_FOUND)
+    return response
+
+
+CONVERSATION_NOT_FOUND = "Conversation not found."
+
+
+@app.post("/api/reports/{analysis_id}/conversations", status_code=201)
+def create_conversation(
+    analysis_id: int, request: Request, user: User = Depends(get_current_user)
+) -> dict:
+    """Start an empty follow-up thread about a report."""
+    conversation = conversations.create_conversation(
+        request.app.state.analysis_service, analysis_id, user.id
+    )
+    if conversation is None:
+        raise HTTPException(status_code=404, detail=REPORT_NOT_FOUND)
+    return conversation
+
+
+@app.get("/api/reports/{analysis_id}/conversations")
+def list_conversations(
+    analysis_id: int, request: Request, user: User = Depends(get_current_user)
+) -> dict:
+    """The user's threads about one report, newest first."""
+    listing = conversations.list_conversations(
+        request.app.state.analysis_service, analysis_id, user.id
+    )
+    if listing is None:
+        raise HTTPException(status_code=404, detail=REPORT_NOT_FOUND)
+    return listing
+
+
+@app.get("/api/reports/{analysis_id}/conversations/{conversation_id}")
+def get_conversation(
+    analysis_id: int,
+    conversation_id: int,
+    request: Request,
+    user: User = Depends(get_current_user),
+) -> dict:
+    """Every saved question and answer of one thread, oldest first."""
+    history = conversations.get_history(
+        request.app.state.analysis_service, analysis_id, conversation_id, user.id
+    )
+    if history is None:
+        raise HTTPException(status_code=404, detail=CONVERSATION_NOT_FOUND)
+    return history
+
+
+@app.post("/api/reports/{analysis_id}/questions")
+def ask_question(
+    analysis_id: int,
+    question: QuestionRequest,
+    request: Request,
+    user: User = Depends(get_current_user),
+) -> dict:
+    """Answer a follow-up question from the report's saved results.
+
+    ``status`` is "answered", "insufficient_evidence" or "unavailable". An
+    unavailable answer is still a 200: the question is saved and retrying with
+    the same ``request_id`` asks again without a second copy of it.
+    """
+    try:
+        response = conversations.ask_question(
+            request.app.state.analysis_service,
+            analysis_id,
+            user.id,
+            question,
+            getattr(request.app.state, "conversation_complete", None) or default_complete(),
+        )
+    except conversations.ConversationNotFound:
+        raise HTTPException(status_code=404, detail=CONVERSATION_NOT_FOUND)
+    except conversations.RequestIdReused as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     if response is None:
         raise HTTPException(status_code=404, detail=REPORT_NOT_FOUND)
     return response

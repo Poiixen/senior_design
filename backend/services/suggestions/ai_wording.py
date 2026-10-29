@@ -86,6 +86,11 @@ def _allowed_numbers(item: dict) -> list:
     return [number for number, _ in _numbers(material)]
 
 
+def _allowed_numbers_in(material) -> list:
+    """Every number that appears anywhere in ``material`` (any JSON value)."""
+    return [number for number, _ in _numbers(_flatten(material))]
+
+
 def _numbers_supported(text: str, allowed: list) -> bool:
     for number, decimals in _numbers(text):
         if not any(round(number, decimals) == round(known, decimals) for known in allowed):
