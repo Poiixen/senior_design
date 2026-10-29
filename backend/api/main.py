@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.engine import Engine
 from starlette.middleware.sessions import SessionMiddleware
 
-from backend.api.auth import get_current_user, router as auth_router
+from backend.api.auth import SESSION_IDLE_SECONDS, get_current_user, router as auth_router
 from backend.database import repository
 from backend.database.connection import (
     DEFAULT_DATABASE_PATH,
@@ -85,7 +85,7 @@ app.add_middleware(
     secret_key=os.getenv("SECRET_KEY") or secrets.token_urlsafe(32),
     same_site="lax",
     https_only=os.getenv("SESSION_COOKIE_SECURE", "").lower() in ("1", "true"),
-    max_age=60 * 60 * 24 * 7,
+    max_age=SESSION_IDLE_SECONDS,
 )
 
 if allowed_origins:
