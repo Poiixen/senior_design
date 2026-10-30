@@ -54,7 +54,11 @@ p-values never enter the score. A non-significant comparison (p >= 0.05) has its
 size halved and is described as "did not detect a difference". When two or more
 tested comparisons are selected they are all marked `exploratory` with a
 multiple-comparison warning, and the smallest p-value is never presented as a
-discovery.
+discovery. Their p-values are adjusted with Holm's method (re-running the same
+selection counts once, using the latest result); `evidence_values` then holds
+`p_value_adjusted` and `p_adjustment` (`method`, `comparisons`), and
+`significant_at_0_05` is read from the adjusted value. A result significant only
+before adjustment has its size halved like any non-significant result.
 
 ## 4. Deduplication, order and paging
 

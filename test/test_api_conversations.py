@@ -387,3 +387,19 @@ def test_categorical_and_grouped_numeric_comparisons_are_grounded(auth_client):
     assert categorical["test"]["method"]["name"] and "p_value" in categorical["test"]
     assert "contingency" not in json.dumps(categorical).lower()
     assert [s["comparison_id"] for s in body["assistant_message"]["sources"]] == [categorical_id, numeric_id]
+
+
+def test_the_model_is_asked_for_statistical_detail_and_given_it(auth_client):
+    analysis_id = upload(auth_client)
+    compare(auth_client, analysis_id, "group", "score")
+    model = use(FakeModel(answer(["report:overview"], "The report has 40 rows.")))
+
+    ask(auth_client, analysis_id, "How strong is the difference?")
+
+    system, _ = model.calls[-1]
+    assert "degrees of freedom" in system and "effect size" in system
+    finding = next(
+        f for f in model.payload["report_evidence"]["findings"] if f["finding_type"] == "group_difference"
+    )
+    assert finding["evidence_values"]["effect_size"] is not None
+    assert finding["evidence_values"]["degrees_of_freedom"] is not None

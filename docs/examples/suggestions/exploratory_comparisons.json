@@ -74,11 +74,12 @@
           "group",
           "score"
         ],
-        "explanation": "Warnings: Group(s) 'B', 'A' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers. Several comparisons were examined together and p-values are not adjusted for that, so treat these results as exploratory. Welch's independent-samples t-test compares the mean of score across the groups defined by group. Observed mean score: B 21.50 (n=22), A 12.06 (n=18). The p-value (5.25e-21) is below 0.05, so the data show evidence of a difference in means between groups. This describes the groups in this dataset and does not show what causes any difference.",
+        "explanation": "Warnings: Group(s) 'B', 'A' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers. Several comparisons were examined together, so p-values are adjusted with Holm's method and these results should be treated as exploratory. Welch's independent-samples t-test compares the mean of score across the groups defined by group. Observed mean score: B 21.50 (median 21.00, n=22), A 12.06 (median 12.00, n=18). The test gave t = 19.88 with 36.03 degrees of freedom. The p-value (5.25e-21) is below 0.05, so the data show evidence of a difference in means between groups. The group means are 6.34 pooled standard deviations apart (Cohen's d), a large gap by Cohen's benchmarks. The size label describes magnitude in this dataset, not practical importance or cause. This describes the groups in this dataset and does not show what causes any difference.",
         "evidence": [
           "Method: Welch's independent-samples t-test (mean comparison).",
-          "t = 19.88, p-value = 5.25e-21.",
-          "Group sizes: B n=22, A n=18.",
+          "t = 19.88, degrees of freedom = 36.03, p-value = 5.25e-21.",
+          "Effect size: Cohen's d = 6.34 (large).",
+          "Group summaries: B mean 21.50, median 21.00, n=22; A mean 12.06, median 12.00, n=18.",
           "40 of 40 rows were compared."
         ],
         "next_steps": [
@@ -140,11 +141,16 @@
             }
           ],
           "rows_included": 40,
-          "rows_total": 40
+          "rows_total": 40,
+          "p_value_adjusted": 1.050814082501051e-20,
+          "p_adjustment": {
+            "method": "holm",
+            "comparisons": 2
+          }
         },
         "warnings": [
           "Group(s) 'B', 'A' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers.",
-          "Several comparisons were examined together and p-values are not adjusted for that, so treat these results as exploratory."
+          "Several comparisons were examined together, so p-values are adjusted with Holm's method and these results should be treated as exploratory."
         ],
         "exploratory": true,
         "visual": {
@@ -271,11 +277,12 @@
           "group",
           "income"
         ],
-        "explanation": "Warnings: Group(s) 'B', 'A' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers. Several comparisons were examined together and p-values are not adjusted for that, so treat these results as exploratory. Welch's independent-samples t-test compares the mean of income across the groups defined by group. Observed mean income: B 1044.88 (n=17), A 1045.54 (n=13). The p-value (0.947) is not below 0.05, so this comparison did not detect a difference. That does not show the groups are the same; small or variable groups can hide real differences. This describes the groups in this dataset and does not show what causes any difference.",
+        "explanation": "Warnings: Group(s) 'B', 'A' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers. Several comparisons were examined together, so p-values are adjusted with Holm's method and these results should be treated as exploratory. Welch's independent-samples t-test compares the mean of income across the groups defined by group. Observed mean income: B 1044.88 (median 1035.00, n=17), A 1045.54 (median 1046.00, n=13). The test gave t = -0.07 with 22.10 degrees of freedom. The p-value (0.947) is not below 0.05, so this comparison did not detect a difference. That does not show the groups are the same; small or variable groups can hide real differences. The group means are 0.03 pooled standard deviations apart (Cohen's d), a negligible gap by Cohen's benchmarks. The size label describes magnitude in this dataset, not practical importance or cause. This describes the groups in this dataset and does not show what causes any difference.",
         "evidence": [
           "Method: Welch's independent-samples t-test (mean comparison).",
-          "t = -0.07, p-value = 0.947.",
-          "Group sizes: B n=17, A n=13.",
+          "t = -0.07, degrees of freedom = 22.10, p-value = 0.947.",
+          "Effect size: Cohen's d = 0.03 (negligible).",
+          "Group summaries: B mean 1044.88, median 1035.00, n=17; A mean 1045.54, median 1046.00, n=13.",
           "30 of 40 rows were compared."
         ],
         "next_steps": [
@@ -338,11 +345,16 @@
             }
           ],
           "rows_included": 30,
-          "rows_total": 40
+          "rows_total": 40,
+          "p_value_adjusted": 0.9468816852850156,
+          "p_adjustment": {
+            "method": "holm",
+            "comparisons": 2
+          }
         },
         "warnings": [
           "Group(s) 'B', 'A' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers.",
-          "Several comparisons were examined together and p-values are not adjusted for that, so treat these results as exploratory."
+          "Several comparisons were examined together, so p-values are adjusted with Holm's method and these results should be treated as exploratory."
         ],
         "exploratory": true,
         "visual": {
@@ -402,7 +414,7 @@
       1,
       2
     ],
-    "evidence_fingerprint": "b0af5a5a7e2ebf9f",
+    "evidence_fingerprint": "87623fc082f34375",
     "total_findings": 4,
     "offset": 0,
     "has_more": false,

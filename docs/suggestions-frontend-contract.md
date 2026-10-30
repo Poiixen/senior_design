@@ -72,7 +72,7 @@ and offer "Regenerate suggestions".
 | `priority`, `priority_percent` | `high`/`medium`/`low` and a 0-100 ranking score. It orders findings; it is not a probability. |
 | `priority_reason` | Plain-language reason for the priority. |
 | `evidence_refs` | Saved results the finding came from (`result_type`, `analysis_id`, `comparison_id`, `column`). |
-| `evidence_values` | Backend numbers behind the text. |
+| `evidence_values` | Backend numbers behind the text: statistic, degrees of freedom, p-value, effect size and measure, group sizes, means and medians. With several tested comparisons it also has `p_value_adjusted` and `p_adjustment` (Holm). |
 | `warnings` | Reliability warnings. Show them before the explanation. |
 | `exploratory` | True when several user-selected comparisons were examined. Never present as a confirmed discovery. |
 | `visual` | Chart specification, below. |

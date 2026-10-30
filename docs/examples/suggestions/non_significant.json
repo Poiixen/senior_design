@@ -11,11 +11,12 @@
           "group",
           "score"
         ],
-        "explanation": "Warnings: Group(s) 'A', 'B' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers. Welch's independent-samples t-test compares the mean of score across the groups defined by group. Observed mean score: A 53.85 (n=20), B 54.10 (n=20). The p-value (0.767) is not below 0.05, so this comparison did not detect a difference. That does not show the groups are the same; small or variable groups can hide real differences. This describes the groups in this dataset and does not show what causes any difference.",
+        "explanation": "Warnings: Group(s) 'A', 'B' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers. Welch's independent-samples t-test compares the mean of score across the groups defined by group. Observed mean score: A 53.85 (median 54.00, n=20), B 54.10 (median 54.00, n=20). The test gave t = -0.30 with 37.98 degrees of freedom. The p-value (0.767) is not below 0.05, so this comparison did not detect a difference. That does not show the groups are the same; small or variable groups can hide real differences. The group means are 0.09 pooled standard deviations apart (Cohen's d), a negligible gap by Cohen's benchmarks. The size label describes magnitude in this dataset, not practical importance or cause. This describes the groups in this dataset and does not show what causes any difference.",
         "evidence": [
           "Method: Welch's independent-samples t-test (mean comparison).",
-          "t = -0.30, p-value = 0.767.",
-          "Group sizes: A n=20, B n=20.",
+          "t = -0.30, degrees of freedom = 37.98, p-value = 0.767.",
+          "Effect size: Cohen's d = 0.09 (negligible).",
+          "Group summaries: A mean 53.85, median 54.00, n=20; B mean 54.10, median 54.00, n=20.",
           "40 of 40 rows were compared."
         ],
         "next_steps": [
@@ -139,7 +140,7 @@
     "comparison_ids_used": [
       1
     ],
-    "evidence_fingerprint": "e36690ade5daa5f9",
+    "evidence_fingerprint": "c5f19af4807c74cf",
     "total_findings": 1,
     "offset": 0,
     "has_more": false,

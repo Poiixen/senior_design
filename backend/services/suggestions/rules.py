@@ -35,8 +35,8 @@ SMALL_GROUP_REASON_WORDS = ("at least", "fewer than", "too few", "expected count
 OPTIONAL_EVIDENCE = ("mean_difference_ci", "eta_squared")
 
 MULTIPLE_COMPARISON_WARNING = (
-    "Several comparisons were examined together and p-values are not adjusted "
-    "for that, so treat these results as exploratory."
+    "Several comparisons were examined together, so p-values are adjusted with "
+    "Holm's method and these results should be treated as exploratory."
 )
 
 
@@ -566,6 +566,63 @@ def _regrouping(comparison: dict, evidence: Evidence) -> list:
     return candidates
 
 
+def holm_adjust(p_values: list) -> list:
+    """Holm-Bonferroni adjusted p-values, in the input order; None stays None.
+
+    Sort the m p-values from smallest to largest, multiply the k-th smallest
+    by (m - k + 1), keep the sequence non-decreasing and cap it at 1. This
+    controls the chance of any false positive across the whole set, and is
+    never less powerful than plain Bonferroni.
+    """
+    ranked = sorted((p, i) for i, p in enumerate(p_values) if p is not None)
+    adjusted = [None] * len(p_values)
+    running = 0.0
+    for k, (p, i) in enumerate(ranked):
+        running = max(running, min(1.0, (len(ranked) - k) * p))
+        adjusted[i] = running
+    return adjusted
+
+
+def _latest_per_selection(candidates: list) -> list:
+    """One candidate per comparison selection: the most recently saved one.
+
+    Re-running a comparison is not a separate test, so repeats must not
+    inflate the number of comparisons being corrected for.
+    """
+    latest = {}
+    for candidate in candidates:
+        key = candidate.overlap_key
+        comparison_id = max(ref.comparison_id or -1 for ref in candidate.refs)
+        if key not in latest or comparison_id > latest[key][0]:
+            latest[key] = (comparison_id, candidate)
+    return [candidate for _, candidate in latest.values()]
+
+
+def _adjust_for_multiple_comparisons(tested: list) -> None:
+    """Mark several tested comparisons exploratory and Holm-adjust their p-values.
+
+    Significance is then read from the adjusted p-value. A result that was
+    significant only before adjustment has its size halved, like any other
+    non-significant result.
+    """
+    distinct = _latest_per_selection(tested)
+    if len(distinct) < 2:
+        return
+    adjusted = holm_adjust([candidate.values.get("p_value") for candidate in distinct])
+    count = sum(p is not None for p in adjusted)
+    for candidate, p_adjusted in zip(distinct, adjusted):
+        candidate.exploratory = True
+        candidate.warnings.append(MULTIPLE_COMPARISON_WARNING)
+        if p_adjusted is None:
+            continue
+        was_significant = candidate.values["significant_at_0_05"]
+        candidate.values["p_value_adjusted"] = p_adjusted
+        candidate.values["p_adjustment"] = {"method": "holm", "comparisons": count}
+        candidate.values["significant_at_0_05"] = p_adjusted < ALPHA
+        if was_significant and p_adjusted >= ALPHA:
+            candidate.size *= 0.5
+
+
 def comparison_findings(evidence: Evidence) -> list:
     candidates = []
     for comparison in evidence.comparisons:
@@ -584,10 +641,7 @@ def comparison_findings(evidence: Evidence) -> list:
     tested = [
         c for c in candidates if c.finding_type in ("group_difference", "categorical_association")
     ]
-    if len(tested) >= 2:
-        for candidate in tested:
-            candidate.exploratory = True
-            candidate.warnings.append(MULTIPLE_COMPARISON_WARNING)
+    _adjust_for_multiple_comparisons(tested)
     return candidates
 
 

@@ -78,11 +78,12 @@
           "group",
           "score"
         ],
-        "explanation": "Warnings: Group(s) 'B', 'A' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers. Welch's independent-samples t-test compares the mean of score across the groups defined by group. Observed mean score: B 21.50 (n=22), A 12.06 (n=18). The p-value (5.25e-21) is below 0.05, so the data show evidence of a difference in means between groups. This describes the groups in this dataset and does not show what causes any difference.",
+        "explanation": "Warnings: Group(s) 'B', 'A' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers. Welch's independent-samples t-test compares the mean of score across the groups defined by group. Observed mean score: B 21.50 (median 21.00, n=22), A 12.06 (median 12.00, n=18). The test gave t = 19.88 with 36.03 degrees of freedom. The p-value (5.25e-21) is below 0.05, so the data show evidence of a difference in means between groups. The group means are 6.34 pooled standard deviations apart (Cohen's d), a large gap by Cohen's benchmarks. The size label describes magnitude in this dataset, not practical importance or cause. This describes the groups in this dataset and does not show what causes any difference.",
         "evidence": [
           "Method: Welch's independent-samples t-test (mean comparison).",
-          "t = 19.88, p-value = 5.25e-21.",
-          "Group sizes: B n=22, A n=18.",
+          "t = 19.88, degrees of freedom = 36.03, p-value = 5.25e-21.",
+          "Effect size: Cohen's d = 6.34 (large).",
+          "Group summaries: B mean 21.50, median 21.00, n=22; A mean 12.06, median 12.00, n=18.",
           "40 of 40 rows were compared."
         ],
         "next_steps": [
@@ -271,7 +272,7 @@
     "comparison_ids_used": [
       1
     ],
-    "evidence_fingerprint": "e2d557a617a50ef0",
+    "evidence_fingerprint": "b374b785de2be389",
     "total_findings": 3,
     "offset": 0,
     "has_more": false,

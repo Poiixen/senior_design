@@ -11,11 +11,12 @@
           "tier",
           "score"
         ],
-        "explanation": "Warnings: Group(s) 'upper', 'low' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers. Welch's independent-samples t-test compares the mean of score across the groups defined by tier. Observed mean score: upper 31.54 (n=24), low 21.75 (n=12). The p-value (1.56e-12) is below 0.05, so the data show evidence of a difference in means between groups. This describes the groups in this dataset and does not show what causes any difference.",
+        "explanation": "Warnings: Group(s) 'upper', 'low' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers. Welch's independent-samples t-test compares the mean of score across the groups defined by tier. Observed mean score: upper 31.54 (median 31.50, n=24), low 21.75 (median 21.50, n=12). The test gave t = 11.00 with 32.74 degrees of freedom. The p-value (1.56e-12) is below 0.05, so the data show evidence of a difference in means between groups. The group means are 3.01 pooled standard deviations apart (Cohen's d), a large gap by Cohen's benchmarks. The size label describes magnitude in this dataset, not practical importance or cause. This describes the groups in this dataset and does not show what causes any difference.",
         "evidence": [
           "Method: Welch's independent-samples t-test (mean comparison).",
-          "t = 11.00, p-value = 1.56e-12.",
-          "Group sizes: upper n=24, low n=12.",
+          "t = 11.00, degrees of freedom = 32.74, p-value = 1.56e-12.",
+          "Effect size: Cohen's d = 3.01 (large).",
+          "Group summaries: upper mean 31.54, median 31.50, n=24; low mean 21.75, median 21.50, n=12.",
           "36 of 36 rows were compared."
         ],
         "next_steps": [
@@ -260,7 +261,7 @@
     "comparison_ids_used": [
       1
     ],
-    "evidence_fingerprint": "aabc06177317dc7c",
+    "evidence_fingerprint": "01a0b5daf4e4fc4a",
     "total_findings": 2,
     "offset": 0,
     "has_more": false,
