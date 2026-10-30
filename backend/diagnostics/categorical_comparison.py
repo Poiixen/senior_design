@@ -116,6 +116,20 @@ def _expected_count_warnings(expected: np.ndarray) -> list[str]:
     return warnings
 
 
+def expected_count_summary(expected: np.ndarray) -> dict:
+    """Counts behind the expected-frequency warnings, for before/after review."""
+    cells = int(expected.size)
+    below_five = int((expected < 5).sum())
+    return {
+        "cells": cells,
+        "cells_below_5": below_five,
+        "cells_below_1": int((expected < 1).sum()),
+        "share_below_5": round(below_five / cells, 4),
+        "guideline": "No expected count below 1 and at most 20% of cells below 5.",
+        "meets_guideline": bool(not (expected < 1).any() and below_five / cells <= 0.2),
+    }
+
+
 def compare_categorical(
     df: pd.DataFrame,
     group_column: str,
@@ -248,6 +262,7 @@ def compare_categorical(
         "p_value": float(p_value),
         "continuity_correction": False,
         "expected_counts": np.round(expected, 4).tolist(),
+        "expected_count_summary": expected_count_summary(expected),
     }
     result["association"] = {
         "method": CRAMERS_V,

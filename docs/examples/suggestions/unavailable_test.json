@@ -1,0 +1,101 @@
+{
+  "description": "The test could not run; nothing is concluded and the chart is an evidence table.",
+  "request": {},
+  "response": {
+    "analysis_id": 1,
+    "source": "fallback",
+    "suggestions": [
+      {
+        "title": "Comparison of group and score could not be tested",
+        "affected_columns": [
+          "group",
+          "score"
+        ],
+        "explanation": "Welch's independent-samples t-test was not run for group and score. Welch's t-test needs at least two values in each group; 'b' has fewer. No conclusion about a difference can be drawn from this comparison.",
+        "evidence": [
+          "Reason: Welch's t-test needs at least two values in each group; 'b' has fewer.",
+          "Group sizes: a n=2, b n=1."
+        ],
+        "next_steps": [
+          "Collect more rows, or regroup sparse categories, then repeat the comparison.",
+          "Use the group sizes to see which categories are too small to compare."
+        ],
+        "finding_id": "small_groups-c1",
+        "finding_type": "small_groups",
+        "priority": "low",
+        "priority_percent": 23,
+        "priority_reason": "The statistical test could not run, so this comparison supports no conclusion.",
+        "evidence_refs": [
+          {
+            "result_type": "comparison",
+            "analysis_id": 1,
+            "comparison_id": 1,
+            "column": null
+          }
+        ],
+        "evidence_values": {
+          "method_name": "Welch's independent-samples t-test",
+          "method_key": "welch_t_test",
+          "status": "unavailable",
+          "reason": "Welch's t-test needs at least two values in each group; 'b' has fewer.",
+          "group_sizes": [
+            {
+              "label": "a",
+              "count": 2
+            },
+            {
+              "label": "b",
+              "count": 1
+            }
+          ],
+          "comparison_type": "categorical_numeric"
+        },
+        "warnings": [],
+        "exploratory": false,
+        "visual": {
+          "chart_type": "evidence_table",
+          "title": "Group sizes for group and score",
+          "source": {
+            "result_type": "comparison",
+            "analysis_id": 1,
+            "comparison_id": 1,
+            "column": null
+          },
+          "data": {
+            "rows": [
+              {
+                "label": "a",
+                "value": 2
+              },
+              {
+                "label": "b",
+                "value": 1
+              }
+            ]
+          },
+          "x_label": null,
+          "y_label": null,
+          "units": "rows",
+          "percent_denominator": null,
+          "warnings": [],
+          "unavailable_fields": [
+            "test_result"
+          ],
+          "fallback_reason": "The statistical test did not run, so there is no result to chart."
+        }
+      }
+    ],
+    "comparison_ids_used": [
+      1
+    ],
+    "evidence_fingerprint": "7eed8857b7ec4984",
+    "total_findings": 1,
+    "offset": 0,
+    "has_more": false,
+    "unavailable_analyses": [
+      "anova",
+      "distribution",
+      "regrouping"
+    ]
+  }
+}

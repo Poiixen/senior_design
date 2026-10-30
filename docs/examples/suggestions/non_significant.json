@@ -1,0 +1,153 @@
+{
+  "description": "A comparison that detected no difference; the text does not claim the groups are alike.",
+  "request": {},
+  "response": {
+    "analysis_id": 1,
+    "source": "fallback",
+    "suggestions": [
+      {
+        "title": "Compare score across group groups",
+        "affected_columns": [
+          "group",
+          "score"
+        ],
+        "explanation": "Warnings: Group(s) 'A', 'B' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers. Welch's independent-samples t-test compares the mean of score across the groups defined by group. Observed mean score: A 53.85 (median 54.00, n=20), B 54.10 (median 54.00, n=20). The test gave t = -0.30 with 37.98 degrees of freedom. The p-value (0.767) is not below 0.05, so this comparison did not detect a difference. That does not show the groups are the same; small or variable groups can hide real differences. The group means are 0.09 pooled standard deviations apart (Cohen's d), a negligible gap by Cohen's benchmarks. The size label describes magnitude in this dataset, not practical importance or cause. This describes the groups in this dataset and does not show what causes any difference.",
+        "evidence": [
+          "Method: Welch's independent-samples t-test (mean comparison).",
+          "t = -0.30, degrees of freedom = 37.98, p-value = 0.767.",
+          "Effect size: Cohen's d = 0.09 (negligible).",
+          "Group summaries: A mean 53.85, median 54.00, n=20; B mean 54.10, median 54.00, n=20.",
+          "40 of 40 rows were compared."
+        ],
+        "next_steps": [
+          "Use the chart to judge how large the observed differences are in practical terms.",
+          "Check the group sizes before reading anything into the lack of a detected difference.",
+          "Consider whether other columns could account for the pattern before drawing conclusions."
+        ],
+        "finding_id": "group_difference-c1",
+        "finding_type": "group_difference",
+        "priority": "low",
+        "priority_percent": 22,
+        "priority_reason": "40 of 40 rows were compared, with an observed gap of 0.09 standard deviations.",
+        "evidence_refs": [
+          {
+            "result_type": "comparison",
+            "analysis_id": 1,
+            "comparison_id": 1,
+            "column": null
+          }
+        ],
+        "evidence_values": {
+          "method_key": "welch_t_test",
+          "method_name": "Welch's independent-samples t-test",
+          "comparison_basis": "means",
+          "statistic_name": "t",
+          "statistic": -0.29861076246530177,
+          "degrees_of_freedom": 37.97561027490817,
+          "p_value": 0.7668649831614991,
+          "significant_at_0_05": false,
+          "effect_size": 0.09442901432298703,
+          "effect_measure": "standardized_mean_difference",
+          "mean_difference": -0.25,
+          "difference_order": [
+            "A",
+            "B"
+          ],
+          "group_sizes": [
+            {
+              "label": "A",
+              "count": 20
+            },
+            {
+              "label": "B",
+              "count": 20
+            }
+          ],
+          "groups": [
+            {
+              "label": "A",
+              "count": 20,
+              "mean": 53.85,
+              "median": 54.0
+            },
+            {
+              "label": "B",
+              "count": 20,
+              "mean": 54.1,
+              "median": 54.0
+            }
+          ],
+          "rows_included": 40,
+          "rows_total": 40
+        },
+        "warnings": [
+          "Group(s) 'A', 'B' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers."
+        ],
+        "exploratory": false,
+        "visual": {
+          "chart_type": "grouped_box",
+          "title": "score by group",
+          "source": {
+            "result_type": "comparison",
+            "analysis_id": 1,
+            "comparison_id": 1,
+            "column": null
+          },
+          "data": {
+            "groups": [
+              {
+                "label": "A",
+                "count": 20,
+                "mean": 53.85,
+                "min": 50.0,
+                "q1": 51.75,
+                "median": 54.0,
+                "q3": 56.0,
+                "max": 58.0,
+                "whisker_low": null,
+                "whisker_high": null,
+                "outlier_count": null
+              },
+              {
+                "label": "B",
+                "count": 20,
+                "mean": 54.1,
+                "min": 50.0,
+                "q1": 52.0,
+                "median": 54.0,
+                "q3": 56.25,
+                "max": 58.0,
+                "whisker_low": null,
+                "whisker_high": null,
+                "outlier_count": null
+              }
+            ]
+          },
+          "x_label": "group",
+          "y_label": "score",
+          "units": null,
+          "percent_denominator": null,
+          "warnings": [],
+          "unavailable_fields": [
+            "whisker_low",
+            "whisker_high",
+            "outlier_count"
+          ],
+          "fallback_reason": null
+        }
+      }
+    ],
+    "comparison_ids_used": [
+      1
+    ],
+    "evidence_fingerprint": "c5f19af4807c74cf",
+    "total_findings": 1,
+    "offset": 0,
+    "has_more": false,
+    "unavailable_analyses": [
+      "anova",
+      "distribution",
+      "regrouping"
+    ]
+  }
+}

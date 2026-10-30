@@ -1,0 +1,91 @@
+{
+  "description": "Second page of the same report (limit 2, offset 2).",
+  "request": {
+    "limit": 2,
+    "offset": 2
+  },
+  "response": {
+    "analysis_id": 1,
+    "source": "fallback",
+    "suggestions": [
+      {
+        "title": "Review repeated rows",
+        "affected_columns": [
+          "id",
+          "income"
+        ],
+        "explanation": "4 rows repeat an earlier row (10.00% of rows), using the report's duplicate definition. Repeated rows can give those records extra weight in later comparisons.",
+        "evidence": [
+          "4 of 40 rows repeat an earlier row (10.00%).",
+          "1 distinct rows are repeated, covering 5 rows in total."
+        ],
+        "next_steps": [
+          "Inspect the repeated rows to see whether they are true copies or separate records that happen to match.",
+          "Decide with the data owner whether they belong in the analysis."
+        ],
+        "finding_id": "duplicates",
+        "finding_type": "duplicates",
+        "priority": "low",
+        "priority_percent": 34,
+        "priority_reason": "10.00% of all rows repeat an earlier row.",
+        "evidence_refs": [
+          {
+            "result_type": "duplicates",
+            "analysis_id": 1,
+            "comparison_id": null,
+            "column": null
+          }
+        ],
+        "evidence_values": {
+          "duplicate_count": 4,
+          "total_rows": 40,
+          "duplicate_percentage": 10.0,
+          "duplicate_group_count": 1,
+          "rows_in_duplicate_groups": 5,
+          "largest_duplicate_group_size": 5
+        },
+        "warnings": [],
+        "exploratory": false,
+        "visual": {
+          "chart_type": "bar",
+          "title": "Repeated rows and other rows",
+          "source": {
+            "result_type": "duplicates",
+            "analysis_id": 1,
+            "comparison_id": null,
+            "column": null
+          },
+          "data": {
+            "categories": [
+              "Repeated rows (extra copies)",
+              "Other rows"
+            ],
+            "values": [
+              4,
+              36
+            ]
+          },
+          "x_label": "Row type",
+          "y_label": "Rows",
+          "units": "rows",
+          "percent_denominator": "all rows in the report",
+          "warnings": [],
+          "unavailable_fields": [],
+          "fallback_reason": null
+        }
+      }
+    ],
+    "comparison_ids_used": [
+      1
+    ],
+    "evidence_fingerprint": "b374b785de2be389",
+    "total_findings": 3,
+    "offset": 2,
+    "has_more": false,
+    "unavailable_analyses": [
+      "anova",
+      "distribution",
+      "regrouping"
+    ]
+  }
+}

@@ -1,0 +1,535 @@
+{
+  "rel_tolerance": 1e-06,
+  "abs_tolerance": 1e-09,
+  "cases": [
+    {
+      "id": "identifier_warning",
+      "ticket": 58,
+      "title": "Identifier-like grouping column",
+      "question": "Is customer_id a meaningful grouping for spend?",
+      "dataset": "datasets/identifier_like.csv",
+      "request": {
+        "comparison_type": "categorical_numeric",
+        "group_column": "customer_id",
+        "value_column": "spend"
+      },
+      "expected_status": 201,
+      "expect": {
+        "identifier_review.0.column": "customer_id",
+        "identifier_review.0.likely_identifier": true,
+        "identifier_review.0.confirmed": false,
+        "identifier_review.0.signals.distinct_values": 40
+      },
+      "expected_warnings_contain": [
+        "may be an identifier"
+      ],
+      "visual": "Warning beside the result with the reasons; no chart should be trusted until the user confirms.",
+      "notes": "40 of 40 values are distinct. The existing category limit is unchanged."
+    },
+    {
+      "id": "identifier_confirmed",
+      "ticket": 58,
+      "title": "User confirms the flagged column",
+      "question": "Same selection, with customer_id confirmed as meaningful.",
+      "dataset": "datasets/identifier_like.csv",
+      "request": {
+        "comparison_type": "categorical_numeric",
+        "group_column": "customer_id",
+        "value_column": "spend",
+        "confirm_columns": [
+          "customer_id"
+        ]
+      },
+      "expected_status": 201,
+      "expect": {
+        "identifier_review.0.confirmed": true
+      },
+      "expected_absent_warnings": [
+        "may be an identifier"
+      ],
+      "visual": "The reasons stay visible and show as confirmed.",
+      "notes": "Confirmation removes the warning but keeps the reasons on record."
+    },
+    {
+      "id": "name_alone_is_not_flagged",
+      "ticket": 58,
+      "title": "Identifier-like name with repeating values",
+      "question": "Is region_id (4 repeating values) flagged?",
+      "dataset": "datasets/identifier_like.csv",
+      "request": {
+        "comparison_type": "categorical_numeric",
+        "group_column": "region_id",
+        "value_column": "spend"
+      },
+      "expected_status": 201,
+      "expect": {},
+      "expected_absent_keys": [
+        "identifier_review"
+      ],
+      "visual": "No warning.",
+      "notes": "A name alone never flags a column."
+    },
+    {
+      "id": "legitimate_high_cardinality",
+      "ticket": 58,
+      "title": "Legitimate high-cardinality grouping column",
+      "question": "Does spend differ across 12 cities?",
+      "dataset": "datasets/high_cardinality_grouping.csv",
+      "request": {
+        "comparison_type": "categorical_numeric",
+        "group_column": "city",
+        "value_column": "spend"
+      },
+      "expected_status": 201,
+      "expect": {
+        "test.method.key": "kruskal_wallis",
+        "test.status": "ok"
+      },
+      "expected_absent_keys": [
+        "identifier_review"
+      ],
+      "visual": "Grouped summary of 12 cities.",
+      "notes": "12 distinct values in 120 rows (10%) is not flagged."
+    },
+    {
+      "id": "sparse_comparison",
+      "ticket": 58,
+      "title": "Sparse categorical comparison",
+      "question": "Is income distributed differently across education levels?",
+      "dataset": "datasets/sparse_categories.csv",
+      "request": {
+        "comparison_type": "categorical_categorical",
+        "group_column": "education",
+        "outcome_column": "income"
+      },
+      "expected_status": 201,
+      "expect": {
+        "test.statistic": 11.76,
+        "test.p_value": 0.008252191253966895,
+        "test.degrees_of_freedom": 3,
+        "test.expected_count_summary.cells": 8,
+        "test.expected_count_summary.cells_below_5": 4
+      },
+      "expected_warnings_contain": [
+        "expected counts below 5"
+      ],
+      "visual": "Grouped percentage bars; MA and PhD have 3 and 2 rows.",
+      "notes": "No regrouping: the baseline."
+    },
+    {
+      "id": "valid_combination",
+      "ticket": 58,
+      "title": "Valid user-defined combination",
+      "question": "Is income distributed differently for HS versus a combined Degree group (BA, MA, PhD)?",
+      "dataset": "datasets/sparse_categories.csv",
+      "request": {
+        "comparison_type": "categorical_categorical",
+        "group_column": "education",
+        "outcome_column": "income",
+        "category_mappings": {
+          "education": [
+            {
+              "label": "Degree",
+              "categories": [
+                "BA",
+                "MA",
+                "PhD"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_status": 201,
+      "expect": {
+        "test.statistic": 9.6,
+        "test.p_value": 0.0019457736937391556,
+        "test.degrees_of_freedom": 1,
+        "test.expected_count_summary.cells": 4,
+        "test.expected_count_summary.cells_below_5": 0,
+        "regrouping.columns.0.categories_before": 4,
+        "regrouping.columns.0.categories_after": 2,
+        "regrouping.columns.0.rows_relabelled": 30,
+        "regrouping.method_change.changed": false
+      },
+      "expect_counts": {
+        "before": [
+          {
+            "label": "HS",
+            "count": 30
+          },
+          {
+            "label": "BA",
+            "count": 25
+          },
+          {
+            "label": "MA",
+            "count": 3
+          },
+          {
+            "label": "PhD",
+            "count": 2
+          }
+        ],
+        "after": [
+          {
+            "label": "Degree",
+            "count": 30
+          },
+          {
+            "label": "HS",
+            "count": 30
+          }
+        ]
+      },
+      "expect_mapping": {
+        "education": [
+          {
+            "label": "Degree",
+            "categories": [
+              "BA",
+              "MA",
+              "PhD"
+            ]
+          }
+        ]
+      },
+      "expected_warnings_contain": [],
+      "expected_absent_warnings": [
+        "expected counts below 5"
+      ],
+      "visual": "Before/after category-count bar chart.",
+      "notes": "Four groups become two. The mapping, original counts and regrouped counts are returned. A different p-value is not evidence the regrouping is better."
+    },
+    {
+      "id": "regrouped_with_remaining_warnings",
+      "ticket": 58,
+      "title": "Regrouped comparison that still has reliability warnings",
+      "question": "Is income distributed differently once only MA and PhD are combined into Graduate?",
+      "dataset": "datasets/sparse_categories.csv",
+      "request": {
+        "comparison_type": "categorical_categorical",
+        "group_column": "education",
+        "outcome_column": "income",
+        "category_mappings": {
+          "education": [
+            {
+              "label": "Graduate",
+              "categories": [
+                "MA",
+                "PhD"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_status": 201,
+      "expect": {
+        "test.statistic": 11.76,
+        "test.p_value": 0.002794785275036845,
+        "test.degrees_of_freedom": 2,
+        "test.expected_count_summary.cells": 6,
+        "test.expected_count_summary.cells_below_5": 2,
+        "regrouping.columns.0.categories_before": 4,
+        "regrouping.columns.0.categories_after": 3,
+        "regrouping.columns.0.rows_relabelled": 5,
+        "regrouping.method_change.changed": false
+      },
+      "expect_counts": {
+        "before": [
+          {
+            "label": "HS",
+            "count": 30
+          },
+          {
+            "label": "BA",
+            "count": 25
+          },
+          {
+            "label": "MA",
+            "count": 3
+          },
+          {
+            "label": "PhD",
+            "count": 2
+          }
+        ],
+        "after": [
+          {
+            "label": "HS",
+            "count": 30
+          },
+          {
+            "label": "BA",
+            "count": 25
+          },
+          {
+            "label": "Graduate",
+            "count": 5
+          }
+        ]
+      },
+      "expect_mapping": {
+        "education": [
+          {
+            "label": "Graduate",
+            "categories": [
+              "MA",
+              "PhD"
+            ]
+          }
+        ]
+      },
+      "expected_warnings_contain": [
+        "expected counts below 5"
+      ],
+      "expected_absent_warnings": [],
+      "visual": "Before/after counts; the remaining warning stays beside the chart.",
+      "notes": "Graduate has only 5 rows, so expected counts are still small. The warning is not hidden by regrouping."
+    },
+    {
+      "id": "method_changes",
+      "ticket": 58,
+      "title": "Combination that changes the number of groups and the method",
+      "question": "Does age differ by education when everyone above high school is combined?",
+      "dataset": "datasets/sparse_categories.csv",
+      "request": {
+        "comparison_type": "categorical_numeric",
+        "group_column": "education",
+        "value_column": "age",
+        "category_mappings": {
+          "education": [
+            {
+              "label": "Degree",
+              "categories": [
+                "BA",
+                "MA",
+                "PhD"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_status": 201,
+      "expect": {
+        "regrouping.method_change.group_count_before": 4,
+        "regrouping.method_change.group_count_after": 2,
+        "regrouping.method_change.method_before": "kruskal_wallis",
+        "regrouping.method_change.method_after": "welch_t_test",
+        "regrouping.method_change.changed": true,
+        "test.method.key": "welch_t_test"
+      },
+      "visual": "Before/after counts plus a notice that the method changed from a rank to a mean comparison.",
+      "notes": "Four groups use Kruskal-Wallis; two groups use Welch's t-test."
+    },
+    {
+      "id": "regroup_both_columns",
+      "ticket": 58,
+      "title": "Regroup the group and the outcome column",
+      "question": "Mappings can be given for both categorical columns of a categorical comparison.",
+      "dataset": "datasets/sparse_categories.csv",
+      "request": {
+        "comparison_type": "categorical_categorical",
+        "group_column": "education",
+        "outcome_column": "income",
+        "category_mappings": {
+          "education": [
+            {
+              "label": "Degree",
+              "categories": [
+                "BA",
+                "MA",
+                "PhD"
+              ]
+            }
+          ],
+          "income": [
+            {
+              "label": "below",
+              "categories": [
+                "low"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_status": 201,
+      "expect": {
+        "regrouping.columns.0.column": "education",
+        "regrouping.columns.1.column": "income",
+        "regrouping.columns.1.categories_after": 2
+      },
+      "visual": "Before/after charts for both columns.",
+      "notes": "Renaming a single category is allowed. Unmapped categories keep their labels."
+    },
+    {
+      "id": "invalid_unknown_category",
+      "ticket": 58,
+      "title": "Invalid mapping: Unknown category",
+      "question": "The request must be rejected with a clear message and save nothing.",
+      "dataset": "datasets/sparse_categories.csv",
+      "request": {
+        "comparison_type": "categorical_categorical",
+        "group_column": "education",
+        "outcome_column": "income",
+        "category_mappings": {
+          "education": [
+            {
+              "label": "X",
+              "categories": [
+                "Nope"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_status": 400,
+      "expect": {},
+      "expected_detail_contains": "does not exist",
+      "visual": "An inline error beside the mapping controls.",
+      "notes": "400 responses create no comparison."
+    },
+    {
+      "id": "invalid_conflicting_mapping",
+      "ticket": 58,
+      "title": "Invalid mapping: Category in two combinations",
+      "question": "The request must be rejected with a clear message and save nothing.",
+      "dataset": "datasets/sparse_categories.csv",
+      "request": {
+        "comparison_type": "categorical_categorical",
+        "group_column": "education",
+        "outcome_column": "income",
+        "category_mappings": {
+          "education": [
+            {
+              "label": "X",
+              "categories": [
+                "MA"
+              ]
+            },
+            {
+              "label": "Y",
+              "categories": [
+                "MA",
+                "PhD"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_status": 400,
+      "expect": {},
+      "expected_detail_contains": "mapped to both",
+      "visual": "An inline error beside the mapping controls.",
+      "notes": "400 responses create no comparison."
+    },
+    {
+      "id": "invalid_empty_label",
+      "ticket": 58,
+      "title": "Invalid mapping: Empty label",
+      "question": "The request must be rejected with a clear message and save nothing.",
+      "dataset": "datasets/sparse_categories.csv",
+      "request": {
+        "comparison_type": "categorical_categorical",
+        "group_column": "education",
+        "outcome_column": "income",
+        "category_mappings": {
+          "education": [
+            {
+              "label": "  ",
+              "categories": [
+                "MA"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_status": 400,
+      "expect": {},
+      "expected_detail_contains": "empty label",
+      "visual": "An inline error beside the mapping controls.",
+      "notes": "400 responses create no comparison."
+    },
+    {
+      "id": "invalid_label_collision",
+      "ticket": 58,
+      "title": "Invalid mapping: Label collides with an existing category",
+      "question": "The request must be rejected with a clear message and save nothing.",
+      "dataset": "datasets/sparse_categories.csv",
+      "request": {
+        "comparison_type": "categorical_categorical",
+        "group_column": "education",
+        "outcome_column": "income",
+        "category_mappings": {
+          "education": [
+            {
+              "label": "HS",
+              "categories": [
+                "MA",
+                "PhD"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_status": 400,
+      "expect": {},
+      "expected_detail_contains": "collides",
+      "visual": "An inline error beside the mapping controls.",
+      "notes": "400 responses create no comparison."
+    },
+    {
+      "id": "invalid_wrong_type",
+      "ticket": 58,
+      "title": "Invalid mapping: Number given for a text category",
+      "question": "The request must be rejected with a clear message and save nothing.",
+      "dataset": "datasets/sparse_categories.csv",
+      "request": {
+        "comparison_type": "categorical_categorical",
+        "group_column": "education",
+        "outcome_column": "income",
+        "category_mappings": {
+          "education": [
+            {
+              "label": "X",
+              "categories": [
+                5
+              ]
+            }
+          ]
+        }
+      },
+      "expected_status": 400,
+      "expect": {},
+      "expected_detail_contains": "(int)",
+      "visual": "An inline error beside the mapping controls.",
+      "notes": "400 responses create no comparison."
+    },
+    {
+      "id": "invalid_column",
+      "ticket": 58,
+      "title": "Invalid mapping: Mapping for a column that is not selected",
+      "question": "The request must be rejected with a clear message and save nothing.",
+      "dataset": "datasets/sparse_categories.csv",
+      "request": {
+        "comparison_type": "categorical_categorical",
+        "group_column": "education",
+        "outcome_column": "income",
+        "category_mappings": {
+          "age": [
+            {
+              "label": "X",
+              "categories": [
+                "a"
+              ]
+            }
+          ]
+        }
+      },
+      "expected_status": 400,
+      "expect": {},
+      "expected_detail_contains": "not one of them",
+      "visual": "An inline error beside the mapping controls.",
+      "notes": "400 responses create no comparison."
+    }
+  ]
+}
