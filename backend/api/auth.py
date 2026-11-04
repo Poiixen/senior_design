@@ -1,11 +1,13 @@
 """Registration, login, logout and current-user endpoints.
 
-The signed session cookie (set up in main.py) only stores the user's ID.
+The signed session cookie stores the user's ID and last authenticated activity.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
+from math import isfinite
+from time import time
 
 from backend.database import repository
 from backend.database.connection import session_scope
@@ -13,6 +15,7 @@ from backend.models import User
 from backend.services import auth_service
 
 MIN_PASSWORD_LENGTH = 8
+SESSION_IDLE_SECONDS = 5 * 60
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -29,6 +32,15 @@ def _public_user(user: User) -> dict:
 def get_current_user(request: Request) -> User:
     """Dependency: the logged-in user, or 401."""
     user_id = request.session.get("user_id")
+    last_activity = request.session.get("last_activity")
+    now = time()
+    if (
+        type(last_activity) not in (int, float)
+        or not isfinite(last_activity)
+        or not 0 <= now - last_activity < SESSION_IDLE_SECONDS
+    ):
+        request.session.clear()
+        raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
     user = None
     if user_id is not None:
         with session_scope(request.app.state.engine) as session:
@@ -36,6 +48,7 @@ def get_current_user(request: Request) -> User:
     if user is None:
         request.session.clear()
         raise HTTPException(status_code=401, detail="Not authenticated.")
+    request.session["last_activity"] = now
     return user
 
 
@@ -66,6 +79,7 @@ def register(credentials: Credentials, request: Request) -> dict:
         raise duplicate
 
     request.session["user_id"] = user.id
+    request.session["last_activity"] = time()
     return _public_user(user)
 
 
@@ -79,6 +93,7 @@ def login(credentials: Credentials, request: Request) -> dict:
         raise HTTPException(status_code=401, detail="Invalid email or password.")
     request.session.clear()
     request.session["user_id"] = user.id
+    request.session["last_activity"] = time()
     return _public_user(user)
 
 

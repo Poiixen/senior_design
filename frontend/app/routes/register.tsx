@@ -8,7 +8,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const data = await request.formData(); const email = String(data.get("email") ?? "").trim(); const password = String(data.get("password") ?? ""); const confirmation = String(data.get("confirmation") ?? "");
   if (!email || !password) return { error: "Email and password are required." };
   if (password !== confirmation) return { error: "Passwords do not match." };
-  try { await registerUser(email, password); return redirect("/"); } catch (error) { return { error: error instanceof Error ? error.message : "Unable to register." }; }
+  try { await registerUser(email, password); return redirect("/dashboard"); } catch (error) { return { error: error instanceof Error ? error.message : "Unable to register." }; }
 }
 export default function Register({ actionData }: Route.ComponentProps) {
   const busy = useNavigation().state !== "idle"; const [submitted, setSubmitted] = useState(false);
