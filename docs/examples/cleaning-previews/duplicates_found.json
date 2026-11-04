@@ -1,0 +1,43 @@
+{
+  "preview": true,
+  "applied": false,
+  "action": "remove_exact_duplicates",
+  "analysis_id": 1,
+  "status": "ok",
+  "explanation": "Removing exact duplicate rows would drop 3 of 7 rows, leaving 4. Rows must match another row in every column, missing values included; the first occurrence of each is kept and the remaining rows keep their order.",
+  "dataset_version": {
+    "dataset_id": 1,
+    "row_count": 7,
+    "column_count": 3,
+    "content_hash": "4423719a78db718f4d51f412ac2542a53780c52039350632c8394ef086f6d3cd"
+  },
+  "counts": {
+    "original_rows": 7,
+    "removed_rows": 3,
+    "resulting_rows": 4
+  },
+  "duplicate_group_count": 2,
+  "row_numbering": "1-based position among data rows, header excluded",
+  "groups": [
+    {
+      "kept_row": 1,
+      "removed_rows": [
+        2,
+        3
+      ],
+      "removed_count": 2
+    },
+    {
+      "kept_row": 5,
+      "removed_rows": [
+        6
+      ],
+      "removed_count": 1
+    }
+  ],
+  "groups_truncated": false,
+  "notes": [
+    "Preview only: the uploaded dataset and the saved report are unchanged.",
+    "Missing values in the same column are treated as equal."
+  ]
+}

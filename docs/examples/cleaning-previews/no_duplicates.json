@@ -1,0 +1,27 @@
+{
+  "preview": true,
+  "applied": false,
+  "action": "remove_exact_duplicates",
+  "analysis_id": 2,
+  "status": "no_duplicates",
+  "explanation": "No exact duplicate rows were found, so this action would not remove any rows.",
+  "dataset_version": {
+    "dataset_id": 2,
+    "row_count": 2,
+    "column_count": 2,
+    "content_hash": "8eb3a5d67bc7fbbd46924396f2a3fd167f4df4f38059313e52789259f2fbf952"
+  },
+  "counts": {
+    "original_rows": 2,
+    "removed_rows": 0,
+    "resulting_rows": 2
+  },
+  "duplicate_group_count": 0,
+  "row_numbering": "1-based position among data rows, header excluded",
+  "groups": [],
+  "groups_truncated": false,
+  "notes": [
+    "Preview only: the uploaded dataset and the saved report are unchanged.",
+    "Missing values in the same column are treated as equal."
+  ]
+}
