@@ -5,6 +5,7 @@ import pandas as pd
 from backend.diagnostics.categorical_comparison import category_distribution
 from backend.diagnostics.comparison_common import ordered_counts
 from backend.diagnostics.duplicate_detection import detect_duplicates
+from backend.diagnostics.identifier_detection import review_identifier_column
 from backend.diagnostics.missing_value_detection import detect_missing_values
 
 
@@ -165,6 +166,10 @@ def profile_dataset(df: pd.DataFrame) -> dict:
             })
 
         details["category"] = inferred_category
+
+        review = review_identifier_column(column_name, column)
+        if review is not None and review["likely_identifier"]:
+            details["identifier_review"] = review
 
         column_details.append(details)
 

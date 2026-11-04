@@ -13,8 +13,19 @@ from backend.database import repository
 from backend.database.connection import session_scope
 from backend.database.dataset_store import DatasetStore
 from backend.diagnostics.categorical_comparison import compare_categorical
+from backend.diagnostics.category_regrouping import (
+    REGROUPING_NOTE,
+    describe_method_change,
+    regroup_columns,
+)
+from backend.diagnostics.comparison_common import (
+    ComparisonError,
+    require_categorical,
+    require_column,
+)
 from backend.diagnostics.generic_dataset_profiler import profile_dataset
 from backend.diagnostics.correlation_analysis import calculate_correlation_matrix
+from backend.diagnostics.identifier_detection import flagged_identifier_reviews
 from backend.diagnostics.iqr_outlier_detection import detect_numeric_outliers
 from backend.diagnostics.numeric_group_comparison import compare_numeric_across_groups
 from backend.diagnostics.validate_dataset import validate_dataset
@@ -239,6 +250,22 @@ def _outlier_result(raw: dict) -> DiagnosticResultSchema:
     )
 
 
+def _method_summary(result: dict) -> dict:
+    """Group count and method of a comparison result, for before/after review."""
+    method = (result.get("test") or {}).get("method") or {}
+    count = len(result.get("groups") or result.get("group_categories") or [])
+    return {
+        "group_count": count,
+        "method": {"key": method.get("key"), "name": method.get("name")},
+    }
+
+
+def _same_selection(first: dict, second: dict) -> bool:
+    return first.get("comparison_type") == second.get("comparison_type") and first.get(
+        "selection"
+    ) == second.get("selection")
+
+
 def _comparison_response(comparison: Comparison) -> dict:
     return {
         "comparison_id": comparison.id,
@@ -389,11 +416,17 @@ class AnalysisService:
         comparison_type: str,
         group_column: str,
         compared_column: str,
+        category_mappings: Optional[dict] = None,
+        confirm_columns: Optional[list] = None,
     ) -> Optional[dict]:
         """Compare two columns of the analysis's dataset and save the result.
 
         ``compared_column`` is the outcome column for categorical_categorical
-        comparisons and the measurement for categorical_numeric ones. Returns
+        comparisons and the measurement for categorical_numeric ones.
+        ``category_mappings`` combines categories on a copy of the selected
+        columns before comparing; the stored rows are never changed.
+        ``confirm_columns`` marks flagged identifier-like columns as
+        reviewed and meaningful. Returns
         None when the user does not own the analysis. Raises
         DatasetRowsUnavailable when the rows were not stored, and
         ComparisonError for columns that cannot be compared.
@@ -413,7 +446,69 @@ class AnalysisService:
                 "compared. Upload the file again to compare its columns."
             )
 
-        result = COMPARISONS[comparison_type](df, group_column, compared_column)
+        categorical_columns = [group_column]
+        if comparison_type == "categorical_categorical":
+            categorical_columns.append(compared_column)
+        confirmed = list(confirm_columns or [])
+        stray = [name for name in confirmed if name not in categorical_columns]
+        if stray:
+            raise ComparisonError(
+                f"'{stray[0]}' is not one of the selected categorical columns "
+                f"({', '.join(categorical_columns)}), so it cannot be confirmed."
+            )
+
+        roles = {group_column: "group"}
+        if comparison_type == "categorical_categorical":
+            roles[compared_column] = "outcome"
+        measurement = () if comparison_type == "categorical_categorical" else (compared_column,)
+        if category_mappings:
+            # Regrouping copies columns, so the selection must be valid first.
+            if group_column == compared_column:
+                raise ComparisonError("Choose two different columns to compare.")
+            for name in roles:
+                require_categorical(df, name)
+            for name in measurement:
+                require_column(df, name)
+        working, regrouped = regroup_columns(df, roles, category_mappings, measurement)
+        result = COMPARISONS[comparison_type](working, group_column, compared_column)
+
+        reviews = flagged_identifier_reviews(df, categorical_columns)
+        for review in reviews:
+            review["role"] = roles[review["column"]]
+            review["confirmed"] = review["column"] in confirmed
+            if not review["confirmed"]:
+                result["warnings"].append(
+                    f"Column '{review['column']}' may be an identifier rather than a "
+                    f"meaningful grouping: {' '.join(review['reasons'])} Confirm it is "
+                    "meaningful, or choose another column."
+                )
+        if reviews:
+            result["identifier_review"] = reviews
+
+        with session_scope(self.engine) as session:
+            if regrouped is not None:
+                baseline = COMPARISONS[comparison_type](df, group_column, compared_column)
+                earlier = [
+                    saved.id
+                    for saved in repository.list_comparisons_for_user(
+                        session, analysis_id, user_id
+                    )
+                    if not saved.result.get("regrouping")
+                    and _same_selection(saved.result, result)
+                ]
+                result["regrouping"] = {
+                    "applied": True,
+                    "analysis_id": analysis_id,
+                    "dataset_id": analysis.dataset_id,
+                    "mappings": {item["column"]: item["mapping"] for item in regrouped},
+                    "columns": regrouped,
+                    "original_comparison_id": earlier[-1] if earlier else None,
+                    "method_change": describe_method_change(
+                        _method_summary(baseline),
+                        _method_summary(result),
+                    ),
+                    "note": REGROUPING_NOTE,
+                }
         with session_scope(self.engine) as session:
             comparison = repository.save_comparison(
                 session,

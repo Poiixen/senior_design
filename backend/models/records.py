@@ -9,7 +9,16 @@ Timestamps are naive UTC datetimes, matching SQLite's DateTime storage.
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import JSON, CheckConstraint, DateTime, Float, ForeignKey, Integer, Text
+from sqlalchemy import (
+    JSON,
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -106,3 +115,41 @@ class Comparison(Base):
     comparison_type: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     result: Mapped[dict] = mapped_column(JSON)
+
+
+class Conversation(Base):
+    """A follow-up question thread owned by one user about one report."""
+
+    __tablename__ = "conversations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    analysis_id: Mapped[int] = mapped_column(ForeignKey("analyses.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class ConversationMessage(Base):
+    """One question or answer. ``request_id`` pairs a question with its answer.
+
+    A retried request reuses its ``request_id``, so the unique constraint keeps
+    a turn from being saved twice. ``sources`` lists the saved results an
+    answer drew on; it is set by the backend, never copied from the model.
+    """
+
+    __tablename__ = "conversation_messages"
+    __table_args__ = (
+        CheckConstraint("role IN ('user', 'assistant')", name="ck_conversation_messages_role"),
+        UniqueConstraint(
+            "conversation_id", "role", "request_id", name="uq_conversation_messages_request"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    conversation_id: Mapped[int] = mapped_column(ForeignKey("conversations.id"), index=True)
+    role: Mapped[str] = mapped_column(Text)
+    request_id: Mapped[str] = mapped_column(Text)
+    content: Mapped[str] = mapped_column(Text)
+    # Assistant messages only: "answered" or "insufficient_evidence".
+    status: Mapped[Optional[str]] = mapped_column(Text)
+    sources: Mapped[Optional[list]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

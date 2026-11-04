@@ -1,0 +1,25 @@
+{
+  "description": "No AI credentials (or the provider failed or returned an invalid reply). HTTP 200 with status 'unavailable'; the question is saved.",
+  "request": {
+    "question": "Why was the group difference flagged?",
+    "request_id": "q-1"
+  },
+  "response": {
+    "analysis_id": 1,
+    "conversation_id": 1,
+    "request_id": "q-1",
+    "status": "unavailable",
+    "user_message": {
+      "message_id": 1,
+      "role": "user",
+      "content": "Why was the group difference flagged?",
+      "request_id": "q-1",
+      "created_at": "2026-10-28T22:27:08.090111Z",
+      "status": null,
+      "sources": []
+    },
+    "assistant_message": null,
+    "unavailable_reason": "The AI assistant is not configured, so questions cannot be answered right now.",
+    "replayed": false
+  }
+}

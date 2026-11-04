@@ -1,0 +1,193 @@
+{
+  "description": "Regrouping four groups into two changes the automatic method from Kruskal-Wallis to Welch's t-test.",
+  "dataset": "docs/examples/demo-pack/datasets/sparse_categories.csv",
+  "earlier_requests": [],
+  "request": {
+    "comparison_type": "categorical_numeric",
+    "group_column": "education",
+    "value_column": "age",
+    "category_mappings": {
+      "education": [
+        {
+          "label": "Degree",
+          "categories": [
+            "BA",
+            "MA",
+            "PhD"
+          ]
+        }
+      ]
+    }
+  },
+  "status": 201,
+  "response": {
+    "comparison_id": 1,
+    "analysis_id": 1,
+    "created_at": "2026-10-26T14:19:31.862128Z",
+    "comparison_type": "categorical_numeric",
+    "design": "independent_groups",
+    "selection": {
+      "group_column": "education",
+      "value_column": "age"
+    },
+    "status": "ok",
+    "reason": null,
+    "rows": {
+      "total": 60,
+      "included": 60,
+      "excluded": 0,
+      "exclusion_reasons": {
+        "missing_group_value": 0,
+        "missing_or_non_finite_value": 0
+      }
+    },
+    "overall": {
+      "count": 60,
+      "mean": 38.88333333333333,
+      "median": 39.4,
+      "std_dev": 7.471781188196948,
+      "min": 19.2,
+      "q1": 34.1,
+      "q3": 43.425,
+      "max": 55.1
+    },
+    "groups": [
+      {
+        "label": "Degree",
+        "count": 30,
+        "mean": 37.20666666666667,
+        "median": 37.7,
+        "std_dev": 6.897672437675716,
+        "min": 19.8,
+        "q1": 32.025,
+        "q3": 42.724999999999994,
+        "max": 48.4
+      },
+      {
+        "label": "HS",
+        "count": 30,
+        "mean": 40.55999999999999,
+        "median": 39.85,
+        "std_dev": 7.757959205518083,
+        "min": 19.2,
+        "q1": 36.625,
+        "q3": 44.025000000000006,
+        "max": 55.1
+      }
+    ],
+    "test": {
+      "method": {
+        "key": "welch_t_test",
+        "name": "Welch's independent-samples t-test",
+        "evaluates": "Whether the mean of the measurement differs between the two groups.",
+        "null_hypothesis": "The two groups have equal population means.",
+        "assumptions": [
+          "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+          "Each group's mean is approximately normally distributed: the values are roughly normal, or the group is large enough for the central limit theorem to apply. Strong skew or outliers in small groups make the p-value unreliable.",
+          "The groups do not need equal variances."
+        ]
+      },
+      "status": "ok",
+      "reason": null,
+      "statistic_name": "t",
+      "statistic": -1.7692975345178517,
+      "degrees_of_freedom": 57.21679905729204,
+      "p_value": 0.08217342942534507,
+      "group_sizes": [
+        {
+          "label": "Degree",
+          "count": 30
+        },
+        {
+          "label": "HS",
+          "count": 30
+        }
+      ],
+      "mean_difference": -3.3533333333333175,
+      "difference_order": [
+        "Degree",
+        "HS"
+      ]
+    },
+    "warnings": [],
+    "note": "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+    "regrouping": {
+      "applied": true,
+      "analysis_id": 1,
+      "dataset_id": 1,
+      "mappings": {
+        "education": [
+          {
+            "label": "Degree",
+            "categories": [
+              "BA",
+              "MA",
+              "PhD"
+            ]
+          }
+        ]
+      },
+      "columns": [
+        {
+          "column": "education",
+          "role": "group",
+          "mapping": [
+            {
+              "label": "Degree",
+              "categories": [
+                "BA",
+                "MA",
+                "PhD"
+              ]
+            }
+          ],
+          "before": [
+            {
+              "label": "HS",
+              "count": 30
+            },
+            {
+              "label": "BA",
+              "count": 25
+            },
+            {
+              "label": "MA",
+              "count": 3
+            },
+            {
+              "label": "PhD",
+              "count": 2
+            }
+          ],
+          "after": [
+            {
+              "label": "Degree",
+              "count": 30
+            },
+            {
+              "label": "HS",
+              "count": 30
+            }
+          ],
+          "categories_before": 4,
+          "categories_after": 2,
+          "unmapped_categories": 1,
+          "rows_relabelled": 30,
+          "missing_values": 0,
+          "missing_values_after": 0,
+          "count_denominator": "non-missing rows"
+        }
+      ],
+      "original_comparison_id": null,
+      "method_change": {
+        "group_count_before": 4,
+        "group_count_after": 2,
+        "method_before": "kruskal_wallis",
+        "method_after": "welch_t_test",
+        "changed": true,
+        "explanation": "The number of groups changed from 4 to 2. The method changed from Kruskal-Wallis H test to Welch's independent-samples t-test. These methods answer different questions, so the results are not directly comparable."
+      },
+      "note": "Regrouping changes the question being compared. A different p-value or fewer warnings do not show that the regrouped comparison is more valid for your research question. The original dataset and earlier comparisons are unchanged."
+    }
+  }
+}

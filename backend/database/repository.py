@@ -15,6 +15,8 @@ from backend.models import (
     Analysis,
     AnalysisReport,
     Comparison,
+    Conversation,
+    ConversationMessage,
     Dataset,
     DiagnosticResult,
     User,
@@ -270,3 +272,104 @@ def get_comparison_for_user(
             Dataset.user_id == user_id,
         )
     ).first()
+
+
+def create_conversation(session: Session, *, analysis_id: int, user_id: int) -> Conversation:
+    """Start a thread. The caller has already checked the user owns the report."""
+    conversation = Conversation(analysis_id=analysis_id, user_id=user_id)
+    session.add(conversation)
+    session.flush()
+    return conversation
+
+
+def get_conversation_for_user(
+    session: Session, analysis_id: int, conversation_id: int, user_id: int
+) -> Optional[Conversation]:
+    """Return the thread only when it belongs to this user and this report."""
+    return session.scalars(
+        select(Conversation).where(
+            Conversation.id == conversation_id,
+            Conversation.analysis_id == analysis_id,
+            Conversation.user_id == user_id,
+        )
+    ).first()
+
+
+def list_conversations_for_user(
+    session: Session, analysis_id: int, user_id: int
+) -> list[Conversation]:
+    """The user's threads about the report, newest first."""
+    return list(session.scalars(
+        select(Conversation)
+        .where(Conversation.analysis_id == analysis_id, Conversation.user_id == user_id)
+        .order_by(Conversation.id.desc())
+    ))
+
+
+def find_conversation_by_request(
+    session: Session, analysis_id: int, user_id: int, request_id: str
+) -> Optional[Conversation]:
+    """The user's thread about the report that already holds this question."""
+    return session.scalars(
+        select(Conversation)
+        .join(ConversationMessage, ConversationMessage.conversation_id == Conversation.id)
+        .where(
+            Conversation.analysis_id == analysis_id,
+            Conversation.user_id == user_id,
+            ConversationMessage.role == "user",
+            ConversationMessage.request_id == request_id,
+        )
+    ).first()
+
+
+def add_conversation_message(
+    session: Session,
+    *,
+    conversation_id: int,
+    role: str,
+    request_id: str,
+    content: str,
+    status: Optional[str] = None,
+    sources: Optional[list] = None,
+) -> ConversationMessage:
+    message = ConversationMessage(
+        conversation_id=conversation_id,
+        role=role,
+        request_id=request_id,
+        content=content,
+        status=status,
+        sources=sources,
+    )
+    session.add(message)
+    session.flush()
+    return message
+
+
+def get_conversation_message(
+    session: Session, conversation_id: int, role: str, request_id: str
+) -> Optional[ConversationMessage]:
+    return session.scalars(
+        select(ConversationMessage).where(
+            ConversationMessage.conversation_id == conversation_id,
+            ConversationMessage.role == role,
+            ConversationMessage.request_id == request_id,
+        )
+    ).first()
+
+
+def list_conversation_messages(
+    session: Session, conversation_id: int, limit: Optional[int] = None
+) -> list[ConversationMessage]:
+    """Messages oldest first; with ``limit``, only the most recent ones."""
+    if limit is None:
+        query = select(ConversationMessage).where(
+            ConversationMessage.conversation_id == conversation_id
+        ).order_by(ConversationMessage.id)
+        return list(session.scalars(query))
+    query = (
+        select(ConversationMessage)
+        .where(ConversationMessage.conversation_id == conversation_id)
+        .order_by(ConversationMessage.id.desc())
+        .limit(limit)
+    )
+    return list(reversed(list(session.scalars(query))))

@@ -17,3 +17,6 @@ httpx
 python-multipart
 argon2-cffi
 itsdangerous
+# Suggestions use an optional LLM only to reword text; needs ANTHROPIC_API_KEY. Without the
+# package or the key, deterministic fallback text is returned.
+anthropic

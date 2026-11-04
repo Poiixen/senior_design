@@ -1,0 +1,273 @@
+{
+  "description": "A regrouped comparison: before/after counts, the exact mapping and the method change.",
+  "request": {},
+  "response": {
+    "analysis_id": 1,
+    "source": "fallback",
+    "suggestions": [
+      {
+        "title": "Compare score across tier groups",
+        "affected_columns": [
+          "tier",
+          "score"
+        ],
+        "explanation": "Warnings: Group(s) 'upper', 'low' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers. Welch's independent-samples t-test compares the mean of score across the groups defined by tier. Observed mean score: upper 31.54 (median 31.50, n=24), low 21.75 (median 21.50, n=12). The test gave t = 11.00 with 32.74 degrees of freedom. The p-value (1.56e-12) is below 0.05, so the data show evidence of a difference in means between groups. The group means are 3.01 pooled standard deviations apart (Cohen's d), a large gap by Cohen's benchmarks. The size label describes magnitude in this dataset, not practical importance or cause. This describes the groups in this dataset and does not show what causes any difference.",
+        "evidence": [
+          "Method: Welch's independent-samples t-test (mean comparison).",
+          "t = 11.00, degrees of freedom = 32.74, p-value = 1.56e-12.",
+          "Effect size: Cohen's d = 3.01 (large).",
+          "Group summaries: upper mean 31.54, median 31.50, n=24; low mean 21.75, median 21.50, n=12.",
+          "36 of 36 rows were compared."
+        ],
+        "next_steps": [
+          "Use the chart to judge how large the observed differences are in practical terms.",
+          "Consider whether other columns could account for the pattern before drawing conclusions."
+        ],
+        "finding_id": "group_difference-c1",
+        "finding_type": "group_difference",
+        "priority": "medium",
+        "priority_percent": 52,
+        "priority_reason": "36 of 36 rows were compared, with an observed gap of 3.01 standard deviations.",
+        "evidence_refs": [
+          {
+            "result_type": "comparison",
+            "analysis_id": 1,
+            "comparison_id": 1,
+            "column": null
+          }
+        ],
+        "evidence_values": {
+          "method_key": "welch_t_test",
+          "method_name": "Welch's independent-samples t-test",
+          "comparison_basis": "means",
+          "statistic_name": "t",
+          "statistic": 11.000259815924393,
+          "degrees_of_freedom": 32.74287178613986,
+          "p_value": 1.5600722281748784e-12,
+          "significant_at_0_05": true,
+          "effect_size": 3.0082865440923148,
+          "effect_measure": "standardized_mean_difference",
+          "mean_difference": 9.791666666666668,
+          "difference_order": [
+            "upper",
+            "low"
+          ],
+          "group_sizes": [
+            {
+              "label": "upper",
+              "count": 24
+            },
+            {
+              "label": "low",
+              "count": 12
+            }
+          ],
+          "groups": [
+            {
+              "label": "upper",
+              "count": 24,
+              "mean": 31.541666666666668,
+              "median": 31.5
+            },
+            {
+              "label": "low",
+              "count": 12,
+              "mean": 21.75,
+              "median": 21.5
+            }
+          ],
+          "rows_included": 36,
+          "rows_total": 36
+        },
+        "warnings": [
+          "Group(s) 'upper', 'low' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers."
+        ],
+        "exploratory": false,
+        "visual": {
+          "chart_type": "grouped_box",
+          "title": "score by tier",
+          "source": {
+            "result_type": "comparison",
+            "analysis_id": 1,
+            "comparison_id": 1,
+            "column": null
+          },
+          "data": {
+            "groups": [
+              {
+                "label": "upper",
+                "count": 24,
+                "mean": 31.541666666666668,
+                "min": 26.0,
+                "q1": 28.0,
+                "median": 31.5,
+                "q3": 35.0,
+                "max": 37.0,
+                "whisker_low": null,
+                "whisker_high": null,
+                "outlier_count": null
+              },
+              {
+                "label": "low",
+                "count": 12,
+                "mean": 21.75,
+                "min": 20.0,
+                "q1": 20.75,
+                "median": 21.5,
+                "q3": 23.0,
+                "max": 24.0,
+                "whisker_low": null,
+                "whisker_high": null,
+                "outlier_count": null
+              }
+            ]
+          },
+          "x_label": "tier",
+          "y_label": "score",
+          "units": null,
+          "percent_denominator": null,
+          "warnings": [],
+          "unavailable_fields": [
+            "whisker_low",
+            "whisker_high",
+            "outlier_count"
+          ],
+          "fallback_reason": null
+        }
+      },
+      {
+        "title": "Review the regrouped categories of tier",
+        "affected_columns": [
+          "tier"
+        ],
+        "explanation": "Warnings: The number of groups changed from 3 to 2. The method changed from Kruskal-Wallis H test to Welch's independent-samples t-test. These methods answer different questions, so the results are not directly comparable. You combined 3 categories of tier into 2. The comparison uses the regrouped categories, so it answers a different question from one on the original categories, and a different p-value or fewer warnings do not show that it is more valid for your research question. The number of groups changed from 3 to 2. The method changed from Kruskal-Wallis H test to Welch's independent-samples t-test. These methods answer different questions, so the results are not directly comparable.",
+        "evidence": [
+          "Categories before regrouping: 3; after: 2.",
+          "Counts after: upper n=24, low n=12."
+        ],
+        "next_steps": [
+          "Compare the before and after counts to confirm each group is what you intended.",
+          "Review any categories that are still small."
+        ],
+        "finding_id": "regrouping-c1-tier",
+        "finding_type": "regrouping",
+        "priority": "low",
+        "priority_percent": 16,
+        "priority_reason": "You regrouped categories before comparing, which changes how the result should be read.",
+        "evidence_refs": [
+          {
+            "result_type": "comparison",
+            "analysis_id": 1,
+            "comparison_id": 1,
+            "column": "tier"
+          }
+        ],
+        "evidence_values": {
+          "role": "group",
+          "categories_before": 3,
+          "categories_after": 2,
+          "unmapped_categories": 1,
+          "before": [
+            {
+              "label": "high",
+              "count": 12
+            },
+            {
+              "label": "low",
+              "count": 12
+            },
+            {
+              "label": "mid",
+              "count": 12
+            }
+          ],
+          "after": [
+            {
+              "label": "upper",
+              "count": 24
+            },
+            {
+              "label": "low",
+              "count": 12
+            }
+          ],
+          "mapping": [
+            {
+              "label": "upper",
+              "categories": [
+                "mid",
+                "high"
+              ]
+            }
+          ],
+          "method_change": {
+            "group_count_before": 3,
+            "group_count_after": 2,
+            "method_before": "kruskal_wallis",
+            "method_after": "welch_t_test",
+            "changed": true,
+            "explanation": "The number of groups changed from 3 to 2. The method changed from Kruskal-Wallis H test to Welch's independent-samples t-test. These methods answer different questions, so the results are not directly comparable."
+          }
+        },
+        "warnings": [
+          "The number of groups changed from 3 to 2. The method changed from Kruskal-Wallis H test to Welch's independent-samples t-test. These methods answer different questions, so the results are not directly comparable."
+        ],
+        "exploratory": false,
+        "visual": {
+          "chart_type": "before_after_bar",
+          "title": "Category counts of tier before and after regrouping",
+          "source": {
+            "result_type": "comparison",
+            "analysis_id": 1,
+            "comparison_id": 1,
+            "column": "tier"
+          },
+          "data": {
+            "before": [
+              {
+                "label": "high",
+                "count": 12
+              },
+              {
+                "label": "low",
+                "count": 12
+              },
+              {
+                "label": "mid",
+                "count": 12
+              }
+            ],
+            "after": [
+              {
+                "label": "upper",
+                "count": 24
+              },
+              {
+                "label": "low",
+                "count": 12
+              }
+            ]
+          },
+          "x_label": "tier",
+          "y_label": "Rows",
+          "units": "rows",
+          "percent_denominator": null,
+          "warnings": [],
+          "unavailable_fields": [],
+          "fallback_reason": null
+        }
+      }
+    ],
+    "comparison_ids_used": [
+      1
+    ],
+    "evidence_fingerprint": "01a0b5daf4e4fc4a",
+    "total_findings": 2,
+    "offset": 0,
+    "has_more": false,
+    "unavailable_analyses": [
+      "anova",
+      "distribution"
+    ]
+  }
+}

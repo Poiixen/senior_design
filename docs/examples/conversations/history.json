@@ -1,0 +1,63 @@
+{
+  "description": "GET /api/reports/{id}/conversations/{conversation_id}: every saved message, oldest first.",
+  "request": null,
+  "response": {
+    "conversation_id": 1,
+    "analysis_id": 1,
+    "created_at": "2026-10-28T22:27:08.085610Z",
+    "messages": [
+      {
+        "message_id": 1,
+        "role": "user",
+        "content": "Why was the group difference flagged?",
+        "request_id": "q-1",
+        "created_at": "2026-10-28T22:27:08.090111Z",
+        "status": null,
+        "sources": []
+      },
+      {
+        "message_id": 2,
+        "role": "assistant",
+        "content": "It was surfaced because Welch's independent-samples t-test compared the mean score of the two groups and the observed gap was large. The comparison carries a warning about small groups, so check those groups for skew or outliers.",
+        "request_id": "q-1",
+        "created_at": "2026-10-28T22:27:08.114149Z",
+        "status": "answered",
+        "sources": [
+          {
+            "source_id": "finding:group_difference-c1",
+            "kind": "finding",
+            "label": "Compare score across group groups",
+            "finding_id": "group_difference-c1",
+            "comparison_id": 1,
+            "method": "Welch's independent-samples t-test"
+          },
+          {
+            "source_id": "comparison:1",
+            "kind": "comparison",
+            "label": "Comparison 1: group and score",
+            "comparison_id": 1,
+            "method": "Welch's independent-samples t-test"
+          }
+        ]
+      },
+      {
+        "message_id": 3,
+        "role": "user",
+        "content": "What did the ANOVA show?",
+        "request_id": "q-2",
+        "created_at": "2026-10-28T22:27:08.149778Z",
+        "status": null,
+        "sources": []
+      },
+      {
+        "message_id": 4,
+        "role": "assistant",
+        "content": "The report has no ANOVA result, so I cannot say what an ANOVA showed. The saved comparison used Welch's independent-samples t-test.",
+        "request_id": "q-2",
+        "created_at": "2026-10-28T22:27:08.156779Z",
+        "status": "insufficient_evidence",
+        "sources": []
+      }
+    ]
+  }
+}

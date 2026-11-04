@@ -1,0 +1,147 @@
+{
+  "description": "Same findings with validated AI wording: ranking, evidence and charts are unchanged.",
+  "request": {},
+  "response": {
+    "analysis_id": 1,
+    "source": "ai",
+    "suggestions": [
+      {
+        "title": "Reworded Review missing income values",
+        "affected_columns": [
+          "income"
+        ],
+        "explanation": "Reworded: 10 of 40 rows are missing income (25.00%).",
+        "evidence": [
+          "10 of 40 rows are missing income (25.00%)."
+        ],
+        "next_steps": [
+          "Check the source data."
+        ],
+        "finding_id": "missing_values-income",
+        "finding_type": "missing_values",
+        "priority": "medium",
+        "priority_percent": 60,
+        "priority_reason": "25.00% of all rows are missing this column.",
+        "evidence_refs": [
+          {
+            "result_type": "missing_values",
+            "analysis_id": 1,
+            "comparison_id": null,
+            "column": "income"
+          }
+        ],
+        "evidence_values": {
+          "missing_count": 10,
+          "present_count": 30,
+          "total_rows": 40,
+          "missing_percentage": 25.0,
+          "severity": "high"
+        },
+        "warnings": [],
+        "exploratory": false,
+        "visual": {
+          "chart_type": "bar",
+          "title": "Missing and present values in income",
+          "source": {
+            "result_type": "missing_values",
+            "analysis_id": 1,
+            "comparison_id": null,
+            "column": "income"
+          },
+          "data": {
+            "categories": [
+              "Missing",
+              "Present"
+            ],
+            "values": [
+              10,
+              30
+            ]
+          },
+          "x_label": "Value status",
+          "y_label": "Rows",
+          "units": "rows",
+          "percent_denominator": "all rows in the report",
+          "warnings": [],
+          "unavailable_fields": [],
+          "fallback_reason": null
+        }
+      },
+      {
+        "title": "Reworded Review repeated rows",
+        "affected_columns": [
+          "id",
+          "income"
+        ],
+        "explanation": "Reworded: 4 of 40 rows repeat an earlier row (10.00%).",
+        "evidence": [
+          "4 of 40 rows repeat an earlier row (10.00%).",
+          "1 distinct rows are repeated, covering 5 rows in total."
+        ],
+        "next_steps": [
+          "Check the source data."
+        ],
+        "finding_id": "duplicates",
+        "finding_type": "duplicates",
+        "priority": "low",
+        "priority_percent": 34,
+        "priority_reason": "10.00% of all rows repeat an earlier row.",
+        "evidence_refs": [
+          {
+            "result_type": "duplicates",
+            "analysis_id": 1,
+            "comparison_id": null,
+            "column": null
+          }
+        ],
+        "evidence_values": {
+          "duplicate_count": 4,
+          "total_rows": 40,
+          "duplicate_percentage": 10.0,
+          "duplicate_group_count": 1,
+          "rows_in_duplicate_groups": 5,
+          "largest_duplicate_group_size": 5
+        },
+        "warnings": [],
+        "exploratory": false,
+        "visual": {
+          "chart_type": "bar",
+          "title": "Repeated rows and other rows",
+          "source": {
+            "result_type": "duplicates",
+            "analysis_id": 1,
+            "comparison_id": null,
+            "column": null
+          },
+          "data": {
+            "categories": [
+              "Repeated rows (extra copies)",
+              "Other rows"
+            ],
+            "values": [
+              4,
+              36
+            ]
+          },
+          "x_label": "Row type",
+          "y_label": "Rows",
+          "units": "rows",
+          "percent_denominator": "all rows in the report",
+          "warnings": [],
+          "unavailable_fields": [],
+          "fallback_reason": null
+        }
+      }
+    ],
+    "comparison_ids_used": [],
+    "evidence_fingerprint": "aed2db130f394a7a",
+    "total_findings": 2,
+    "offset": 0,
+    "has_more": false,
+    "unavailable_analyses": [
+      "anova",
+      "distribution",
+      "regrouping"
+    ]
+  }
+}
