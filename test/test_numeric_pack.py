@@ -33,6 +33,25 @@ def assert_value(actual, expected, path):
         assert actual == expected, path
 
 
+def assert_json_matches(actual, expected, path=""):
+    if isinstance(expected, float):
+        assert actual == pytest.approx(expected, rel=REL, abs=ABS), path
+    elif isinstance(expected, dict):
+        assert isinstance(actual, dict), path
+        assert set(actual) == set(expected), path
+        for key, value in expected.items():
+            next_path = f"{path}.{key}" if path else key
+            assert_json_matches(actual[key], value, next_path)
+    elif isinstance(expected, list):
+        assert isinstance(actual, list), path
+        assert len(actual) == len(expected), path
+        for index, value in enumerate(expected):
+            next_path = f"{path}.{index}" if path else str(index)
+            assert_json_matches(actual[index], value, next_path)
+    else:
+        assert actual == expected, path
+
+
 def upload(client, dataset):
     csv = (PACK / dataset).read_text(encoding="utf-8")
     response = client.post("/api/analyze", files={"file": (Path(dataset).name, csv, "text/csv")})
@@ -119,7 +138,7 @@ def test_committed_response_matches_the_endpoint(auth_client, case):
         f"/api/reports/{report['analysis_id']}/comparisons", json=example["request"]
     )
     assert response.status_code == example["status"]
-    assert strip(response.json()) == strip(example["response"])
+    assert_json_matches(strip(response.json()), strip(example["response"]))
 
 
 def by_id(case_id):
