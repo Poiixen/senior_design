@@ -1,0 +1,126 @@
+{
+  "case": "anova_with_two_groups",
+  "outcome": "unavailable",
+  "dataset": "docs/examples/numeric-pack/datasets/two_groups.csv",
+  "request": {
+    "comparison_type": "categorical_numeric",
+    "group_column": "group",
+    "value_column": "score",
+    "method": "welch_anova"
+  },
+  "status": 201,
+  "response": {
+    "comparison_id": 1,
+    "analysis_id": 1,
+    "created_at": "2026-11-05T00:22:19.892680Z",
+    "comparison_type": "categorical_numeric",
+    "design": "independent_groups",
+    "selection": {
+      "group_column": "group",
+      "value_column": "score"
+    },
+    "status": "ok",
+    "reason": null,
+    "rows": {
+      "total": 75,
+      "included": 75,
+      "excluded": 0,
+      "exclusion_reasons": {
+        "missing_group_value": 0,
+        "missing_or_non_finite_value": 0
+      }
+    },
+    "overall": {
+      "count": 75,
+      "mean": 52.33326666666667,
+      "median": 52.587,
+      "std_dev": 8.879014673744862,
+      "min": 29.218,
+      "q1": 46.57,
+      "q3": 58.965,
+      "max": 69.493,
+      "whisker_low": 29.218,
+      "whisker_high": 69.493,
+      "outlier_count": 0
+    },
+    "groups": [
+      {
+        "label": "control",
+        "count": 40,
+        "mean": 49.99985,
+        "median": 49.284,
+        "std_dev": 9.2581622935573,
+        "min": 29.218,
+        "q1": 43.46725,
+        "q3": 56.8925,
+        "max": 68.002,
+        "whisker_low": 29.218,
+        "whisker_high": 68.002,
+        "outlier_count": 0
+      },
+      {
+        "label": "treatment",
+        "count": 35,
+        "mean": 55.00002857142857,
+        "median": 54.908,
+        "std_dev": 7.716295825320951,
+        "min": 40.28,
+        "q1": 50.5245,
+        "q3": 60.571,
+        "max": 69.493,
+        "whisker_low": 40.28,
+        "whisker_high": 69.493,
+        "outlier_count": 0
+      }
+    ],
+    "test": {
+      "method": {
+        "key": "welch_anova",
+        "name": "Welch's one-way ANOVA",
+        "evaluates": "Whether the mean of the measurement differs across three or more groups, without assuming the groups have equal variances.",
+        "null_hypothesis": "All groups have equal population means.",
+        "variant": "welch",
+        "assumptions": [
+          "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+          "Each group's mean is approximately normally distributed: the values are roughly normal, or the group is large enough for the central limit theorem to apply. Strong skew or outliers in small groups make the p-value unreliable.",
+          "Group variances may differ. This is Welch's (1951) ANOVA, not the classical F-test, which assumes equal variances.",
+          "Each group needs at least two values with some variation, because groups are weighted by their size divided by their variance."
+        ],
+        "limitations": [
+          "The overall test says whether at least one group mean differs; it does not identify which groups differ. Pairwise (post-hoc) comparisons are not provided.",
+          "A p-value above the chosen significance level does not show the groups are equal; it means this data did not provide clear evidence of a difference.",
+          "Eta squared describes the share of variation between group means in this sample; it does not adjust for unequal variances."
+        ]
+      },
+      "status": "unavailable",
+      "reason": "Welch's ANOVA is offered for three or more groups; this selection has two. Request welch_t_test, which runs the equivalent test and also returns the mean difference and its confidence interval.",
+      "group_sizes": [
+        {
+          "label": "control",
+          "count": 40
+        },
+        {
+          "label": "treatment",
+          "count": 35
+        }
+      ]
+    },
+    "warnings": [],
+    "note": "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+    "result_version": 2,
+    "analysis_question": {
+      "key": "compare_means",
+      "text": "Does the mean of 'score' differ across the 'group' groups?"
+    },
+    "method_selection": {
+      "requested": "welch_anova",
+      "selected": "welch_anova",
+      "rule": "Chosen by the request."
+    },
+    "box_plot": {
+      "quartile_method": "linear interpolation (pandas/numpy default)",
+      "whisker_rule": "Tukey: whiskers reach the most extreme values within 1.5 x IQR of the quartiles.",
+      "outliers": "Values beyond the whiskers are counted in outlier_count."
+    }
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "case": "anova_constant_values",
+  "outcome": "unavailable",
+  "dataset": "docs/examples/numeric-pack/datasets/constant.csv",
+  "request": {
+    "comparison_type": "categorical_numeric",
+    "group_column": "team",
+    "value_column": "fixed",
+    "method": "welch_anova"
+  },
+  "status": 201,
+  "response": {
+    "comparison_id": 1,
+    "analysis_id": 1,
+    "created_at": "2026-11-05T00:22:19.340602Z",
+    "comparison_type": "categorical_numeric",
+    "design": "independent_groups",
+    "selection": {
+      "group_column": "team",
+      "value_column": "fixed"
+    },
+    "status": "ok",
+    "reason": null,
+    "rows": {
+      "total": 15,
+      "included": 15,
+      "excluded": 0,
+      "exclusion_reasons": {
+        "missing_group_value": 0,
+        "missing_or_non_finite_value": 0
+      }
+    },
+    "overall": {
+      "count": 15,
+      "mean": 7.0,
+      "median": 7.0,
+      "std_dev": 0.0,
+      "min": 7.0,
+      "q1": 7.0,
+      "q3": 7.0,
+      "max": 7.0,
+      "whisker_low": 7.0,
+      "whisker_high": 7.0,
+      "outlier_count": 0
+    },
+    "groups": [
+      {
+        "label": "x",
+        "count": 5,
+        "mean": 7.0,
+        "median": 7.0,
+        "std_dev": 0.0,
+        "min": 7.0,
+        "q1": 7.0,
+        "q3": 7.0,
+        "max": 7.0,
+        "whisker_low": 7.0,
+        "whisker_high": 7.0,
+        "outlier_count": 0
+      },
+      {
+        "label": "y",
+        "count": 5,
+        "mean": 7.0,
+        "median": 7.0,
+        "std_dev": 0.0,
+        "min": 7.0,
+        "q1": 7.0,
+        "q3": 7.0,
+        "max": 7.0,
+        "whisker_low": 7.0,
+        "whisker_high": 7.0,
+        "outlier_count": 0
+      },
+      {
+        "label": "z",
+        "count": 5,
+        "mean": 7.0,
+        "median": 7.0,
+        "std_dev": 0.0,
+        "min": 7.0,
+        "q1": 7.0,
+        "q3": 7.0,
+        "max": 7.0,
+        "whisker_low": 7.0,
+        "whisker_high": 7.0,
+        "outlier_count": 0
+      }
+    ],
+    "test": {
+      "method": {
+        "key": "welch_anova",
+        "name": "Welch's one-way ANOVA",
+        "evaluates": "Whether the mean of the measurement differs across three or more groups, without assuming the groups have equal variances.",
+        "null_hypothesis": "All groups have equal population means.",
+        "variant": "welch",
+        "assumptions": [
+          "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+          "Each group's mean is approximately normally distributed: the values are roughly normal, or the group is large enough for the central limit theorem to apply. Strong skew or outliers in small groups make the p-value unreliable.",
+          "Group variances may differ. This is Welch's (1951) ANOVA, not the classical F-test, which assumes equal variances.",
+          "Each group needs at least two values with some variation, because groups are weighted by their size divided by their variance."
+        ],
+        "limitations": [
+          "The overall test says whether at least one group mean differs; it does not identify which groups differ. Pairwise (post-hoc) comparisons are not provided.",
+          "A p-value above the chosen significance level does not show the groups are equal; it means this data did not provide clear evidence of a difference.",
+          "Eta squared describes the share of variation between group means in this sample; it does not adjust for unequal variances."
+        ]
+      },
+      "status": "unavailable",
+      "reason": "Group(s) 'x', 'y', 'z' contain a single repeated value. Welch's ANOVA weights each group by its size divided by its variance, so a group with zero variance makes the test undefined. Kruskal-Wallis can still compare ranks.",
+      "group_sizes": [
+        {
+          "label": "x",
+          "count": 5
+        },
+        {
+          "label": "y",
+          "count": 5
+        },
+        {
+          "label": "z",
+          "count": 5
+        }
+      ]
+    },
+    "warnings": [],
+    "note": "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+    "result_version": 2,
+    "analysis_question": {
+      "key": "compare_means",
+      "text": "Does the mean of 'fixed' differ across the 'team' groups?"
+    },
+    "method_selection": {
+      "requested": "welch_anova",
+      "selected": "welch_anova",
+      "rule": "Chosen by the request."
+    },
+    "box_plot": {
+      "quartile_method": "linear interpolation (pandas/numpy default)",
+      "whisker_rule": "Tukey: whiskers reach the most extreme values within 1.5 x IQR of the quartiles.",
+      "outliers": "Values beyond the whiskers are counted in outlier_count."
+    }
+  }
+}
