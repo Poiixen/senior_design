@@ -379,6 +379,9 @@ class NumericComparisonRequest(BaseModel):
     comparison_type: Literal["categorical_numeric"]
     group_column: str
     value_column: str
+    # "auto" keeps the original rule: Welch's t-test for two groups,
+    # Kruskal-Wallis for three or more.
+    method: Literal["auto", "welch_t_test", "welch_anova", "kruskal_wallis"] = "auto"
     category_mappings: Optional[dict[str, list[CategoryCombination]]] = None
     confirm_columns: list[str] = Field(default_factory=list)
 
@@ -428,6 +431,11 @@ def create_comparison(
             }
             or None,
             confirm_columns=selection.confirm_columns,
+            **(
+                {"method": selection.method}
+                if isinstance(selection, NumericComparisonRequest)
+                else {}
+            ),
         )
     except ComparisonError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

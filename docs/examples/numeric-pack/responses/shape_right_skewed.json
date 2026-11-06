@@ -1,0 +1,83 @@
+{
+  "case": "shape_right_skewed",
+  "outcome": "success",
+  "dataset": "docs/examples/numeric-pack/datasets/shapes.csv",
+  "request": null,
+  "status": 200,
+  "response": {
+    "name": "right_skewed",
+    "dtype": "float64",
+    "non_null_count": 300,
+    "missing_count": 0,
+    "missing_percentage": 0.0,
+    "unique_values": 299,
+    "unique_percentage": 99.67,
+    "mean": 12.416973333333335,
+    "median": 9.8795,
+    "std_dev": 8.617632570279575,
+    "min": 2.765,
+    "q1": 6.3335,
+    "q3": 15.184999999999999,
+    "max": 46.066,
+    "histogram": {
+      "included_values": 300,
+      "bin_edges": [
+        2.765,
+        6.373416666666667,
+        9.981833333333334,
+        13.590250000000001,
+        17.198666666666668,
+        20.807083333333335,
+        24.4155,
+        28.02391666666667,
+        31.632333333333335,
+        35.240750000000006,
+        38.84916666666667,
+        42.45758333333333,
+        46.066
+      ],
+      "counts": [
+        76,
+        76,
+        55,
+        31,
+        19,
+        8,
+        14,
+        7,
+        5,
+        3,
+        3,
+        3
+      ]
+    },
+    "distribution_shape": {
+      "status": "ok",
+      "reason": null,
+      "measure": {
+        "key": "adjusted_fisher_pearson_skewness",
+        "name": "Adjusted Fisher-Pearson skewness coefficient (G1)",
+        "calculation": "G1 = g1 * sqrt(n * (n - 1)) / (n - 2), where g1 = m3 / m2^1.5 and m2, m3 are the second and third central moments of the finite values. Matches pandas Series.skew and scipy.stats.skew(bias=False).",
+        "thresholds": {
+          "approximately_symmetric": "|skewness| < 0.5",
+          "moderate": "0.5 <= |skewness| < 1",
+          "strong": "|skewness| >= 1",
+          "direction": "negative is left-skewed (long tail of small values); positive is right-skewed (long tail of large values)",
+          "source": "Bulmer (1979), Principles of Statistics"
+        }
+      },
+      "sample_size": 300,
+      "skewness": 1.6331462627984774,
+      "standard_error": 0.14072107775165657,
+      "classification": "right_skewed",
+      "strength": "strong",
+      "warnings": [],
+      "limitations": [
+        "Approximate symmetry does not mean the values are normally distributed; flat or two-peaked distributions can also have skewness near zero.",
+        "Skewness is sensitive to a few extreme values; check the histogram and outlier counts alongside it.",
+        "Missing, NaN and infinite values are left out."
+      ]
+    },
+    "category": "numeric"
+  }
+}

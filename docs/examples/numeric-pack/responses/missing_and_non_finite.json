@@ -1,0 +1,143 @@
+{
+  "case": "missing_and_non_finite",
+  "outcome": "warning",
+  "dataset": "docs/examples/numeric-pack/datasets/messy.csv",
+  "request": {
+    "comparison_type": "categorical_numeric",
+    "group_column": "site",
+    "value_column": "reading",
+    "method": "welch_t_test"
+  },
+  "status": 201,
+  "response": {
+    "comparison_id": 1,
+    "analysis_id": 1,
+    "created_at": "2026-11-05T00:22:19.022542Z",
+    "comparison_type": "categorical_numeric",
+    "design": "independent_groups",
+    "selection": {
+      "group_column": "site",
+      "value_column": "reading"
+    },
+    "status": "ok",
+    "reason": null,
+    "rows": {
+      "total": 30,
+      "included": 23,
+      "excluded": 7,
+      "exclusion_reasons": {
+        "missing_group_value": 2,
+        "missing_or_non_finite_value": 6
+      }
+    },
+    "overall": {
+      "count": 23,
+      "mean": 19.760434782608698,
+      "median": 19.06,
+      "std_dev": 3.624297396814086,
+      "min": 12.12,
+      "q1": 18.16,
+      "q3": 21.65,
+      "max": 27.13,
+      "whisker_low": 15.5,
+      "whisker_high": 24.57,
+      "outlier_count": 3
+    },
+    "groups": [
+      {
+        "label": "south",
+        "count": 12,
+        "mean": 19.171666666666663,
+        "median": 19.055,
+        "std_dev": 4.363901159895047,
+        "min": 12.12,
+        "q1": 16.3375,
+        "q3": 19.775000000000002,
+        "max": 27.13,
+        "whisker_low": 12.12,
+        "whisker_high": 20.78,
+        "outlier_count": 2
+      },
+      {
+        "label": "north",
+        "count": 11,
+        "mean": 20.402727272727272,
+        "median": 19.24,
+        "std_dev": 2.66090244431881,
+        "min": 15.9,
+        "q1": 18.810000000000002,
+        "q3": 22.47,
+        "max": 24.57,
+        "whisker_low": 15.9,
+        "whisker_high": 24.57,
+        "outlier_count": 0
+      }
+    ],
+    "test": {
+      "method": {
+        "key": "welch_t_test",
+        "name": "Welch's independent-samples t-test",
+        "evaluates": "Whether the mean of the measurement differs between the two groups.",
+        "null_hypothesis": "The two groups have equal population means.",
+        "assumptions": [
+          "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+          "Each group's mean is approximately normally distributed: the values are roughly normal, or the group is large enough for the central limit theorem to apply. Strong skew or outliers in small groups make the p-value unreliable.",
+          "The groups do not need equal variances."
+        ],
+        "limitations": [
+          "Compares exactly two groups.",
+          "A p-value above the chosen significance level does not show the groups are equal; it means this data did not provide clear evidence of a difference.",
+          "The confidence interval for the mean difference relies on the same assumptions as the test."
+        ]
+      },
+      "status": "ok",
+      "reason": null,
+      "statistic_name": "t",
+      "statistic": -0.8242604535886161,
+      "degrees_of_freedom": 18.40262289613093,
+      "p_value": 0.4203470619892152,
+      "group_sizes": [
+        {
+          "label": "south",
+          "count": 12
+        },
+        {
+          "label": "north",
+          "count": 11
+        }
+      ],
+      "mean_difference": -1.231060606060609,
+      "difference_order": [
+        "south",
+        "north"
+      ],
+      "mean_difference_ci": {
+        "level": 0.95,
+        "lower": -4.363944464367359,
+        "upper": 1.9018232522461411,
+        "standard_error": 1.4935335071589213,
+        "degrees_of_freedom": 18.40262289613093,
+        "calculation": "Welch-Satterthwaite interval: (mean of first group - mean of second group) +/- t(0.975, df) x sqrt(s1^2/n1 + s2^2/n2), using the test's degrees of freedom."
+      }
+    },
+    "warnings": [
+      "Group(s) 'south', 'north' have fewer than 30 values. Welch's t-test assumes approximately normal group means, so check those groups for skew or outliers."
+    ],
+    "note": "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+    "result_version": 2,
+    "analysis_question": {
+      "key": "compare_means",
+      "text": "Does the mean of 'reading' differ across the two 'site' groups?"
+    },
+    "method_selection": {
+      "requested": "welch_t_test",
+      "selected": "welch_t_test",
+      "rule": "Chosen by the request."
+    },
+    "box_plot": {
+      "quartile_method": "linear interpolation (pandas/numpy default)",
+      "whisker_rule": "Tukey: whiskers reach the most extreme values within 1.5 x IQR of the quartiles.",
+      "outliers": "Values beyond the whiskers are counted in outlier_count."
+    }
+  }
+}
