@@ -237,3 +237,84 @@ def test_dataset_store_saves_mixed_type_columns_as_text(tmp_path):
 
     assert store.load(1)["mixed"].tolist() == ["1", "two", None, "3.5"]
     assert list(tmp_path.iterdir()) == [store.path(1)]
+
+
+# --- Ticket #57: explicit methods ---------------------------------------------
+
+
+def test_welch_anova_is_available_and_saved_with_its_method(auth_client):
+    analysis_id = upload(auth_client)
+
+    response = compare(auth_client, analysis_id, {**THREE_GROUPS, "method": "welch_anova"})
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["method_selection"]["selected"] == "welch_anova"
+    assert body["analysis_question"]["key"] == "compare_means"
+    # MA has one finite age, so the ANOVA cannot run; summaries are still saved.
+    assert body["test"]["status"] == "unavailable"
+    assert "at least two values" in body["test"]["reason"]
+    saved = auth_client.get(
+        f"/api/reports/{analysis_id}/comparisons/{body['comparison_id']}"
+    ).json()
+    assert saved == body
+    assert saved["test"]["method"]["key"] == "welch_anova"
+
+
+def test_welch_mean_difference_has_a_saved_interval(auth_client):
+    analysis_id = upload(auth_client)
+
+    body = compare(auth_client, analysis_id, {**TWO_GROUPS, "method": "welch_t_test"}).json()
+
+    interval = body["test"]["mean_difference_ci"]
+    assert interval["level"] == 0.95
+    assert interval["lower"] < body["test"]["mean_difference"] < interval["upper"]
+
+
+def test_unknown_method_gives_422(auth_client):
+    analysis_id = upload(auth_client)
+
+    response = compare(auth_client, analysis_id, {**THREE_GROUPS, "method": "anova"})
+
+    assert response.status_code == 422
+
+
+def test_regrouped_baseline_uses_the_requested_method(auth_client):
+    analysis_id = upload(auth_client)
+    body = {
+        **THREE_GROUPS,
+        "method": "kruskal_wallis",
+        "category_mappings": {"education": [{"label": "Degree", "categories": ["BA", "MA"]}]},
+    }
+
+    change = compare(auth_client, analysis_id, body).json()["regrouping"]["method_change"]
+
+    assert change["method_before"] == change["method_after"] == "kruskal_wallis"
+    assert change["changed"] is False
+
+
+def test_comparisons_saved_before_ticket_57_are_returned_unchanged(auth_client):
+    from backend.database import repository
+    from backend.database.connection import session_scope
+
+    analysis_id = upload(auth_client)
+    legacy = {
+        "comparison_type": "categorical_numeric",
+        "selection": {"group_column": "education", "value_column": "age"},
+        "status": "ok",
+        "groups": [{"label": "HS", "count": 3, "mean": 29.3}],
+        "test": {"method": {"key": "kruskal_wallis"}, "status": "ok", "p_value": 0.2},
+        "warnings": [],
+    }
+    with session_scope(app.state.engine) as session:
+        repository.save_comparison(
+            session, analysis_id=analysis_id, comparison_type="categorical_numeric", result=legacy
+        )
+
+    listed = auth_client.get(f"/api/reports/{analysis_id}/comparisons").json()["comparisons"]
+
+    assert len(listed) == 1
+    assert {k: v for k, v in listed[0].items() if k in legacy} == legacy
+    assert "result_version" not in listed[0]
+    suggestions = auth_client.post(f"/api/reports/{analysis_id}/suggestions", json={})
+    assert suggestions.status_code == 200

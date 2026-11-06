@@ -418,6 +418,7 @@ class AnalysisService:
         compared_column: str,
         category_mappings: Optional[dict] = None,
         confirm_columns: Optional[list] = None,
+        method: str = "auto",
     ) -> Optional[dict]:
         """Compare two columns of the analysis's dataset and save the result.
 
@@ -426,7 +427,8 @@ class AnalysisService:
         ``category_mappings`` combines categories on a copy of the selected
         columns before comparing; the stored rows are never changed.
         ``confirm_columns`` marks flagged identifier-like columns as
-        reviewed and meaningful. Returns
+        reviewed and meaningful. ``method`` selects the categorical_numeric
+        test (see ``numeric_group_comparison.METHOD_CHOICES``). Returns
         None when the user does not own the analysis. Raises
         DatasetRowsUnavailable when the rows were not stored, and
         ComparisonError for columns that cannot be compared.
@@ -469,8 +471,9 @@ class AnalysisService:
                 require_categorical(df, name)
             for name in measurement:
                 require_column(df, name)
+        options = {} if comparison_type == "categorical_categorical" else {"method": method}
         working, regrouped = regroup_columns(df, roles, category_mappings, measurement)
-        result = COMPARISONS[comparison_type](working, group_column, compared_column)
+        result = COMPARISONS[comparison_type](working, group_column, compared_column, **options)
 
         reviews = flagged_identifier_reviews(df, categorical_columns)
         for review in reviews:
@@ -487,7 +490,9 @@ class AnalysisService:
 
         with session_scope(self.engine) as session:
             if regrouped is not None:
-                baseline = COMPARISONS[comparison_type](df, group_column, compared_column)
+                baseline = COMPARISONS[comparison_type](
+                    df, group_column, compared_column, **options
+                )
                 earlier = [
                     saved.id
                     for saved in repository.list_comparisons_for_user(
