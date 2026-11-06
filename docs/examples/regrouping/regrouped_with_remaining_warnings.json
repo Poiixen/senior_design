@@ -102,7 +102,7 @@
       "reason": null,
       "statistic": 11.76,
       "degrees_of_freedom": 2,
-      "p_value": 0.002794785275036845,
+      "p_value": 0.0027947852750368446,
       "continuity_correction": false,
       "expected_counts": [
         [
