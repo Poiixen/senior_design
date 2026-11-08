@@ -7,6 +7,8 @@ import pytest
 
 ROOT = Path(__file__).parent.parent
 EXAMPLES = sorted((ROOT / "docs" / "examples" / "regrouping").glob("*.json"))
+REL_TOLERANCE = 1e-12
+ABS_TOLERANCE = 1e-12
 
 
 def strip(response):
@@ -20,6 +22,25 @@ def strip(response):
         regrouping.pop("dataset_id", None)
         regrouping["original_comparison_id"] = regrouping["original_comparison_id"] is not None
     return result
+
+
+def assert_json_matches(actual, expected, path=""):
+    if isinstance(expected, float):
+        assert actual == pytest.approx(expected, rel=REL_TOLERANCE, abs=ABS_TOLERANCE), path
+    elif isinstance(expected, dict):
+        assert isinstance(actual, dict), path
+        assert set(actual) == set(expected), path
+        for key, value in expected.items():
+            next_path = f"{path}.{key}" if path else key
+            assert_json_matches(actual[key], value, next_path)
+    elif isinstance(expected, list):
+        assert isinstance(actual, list), path
+        assert len(actual) == len(expected), path
+        for index, value in enumerate(expected):
+            next_path = f"{path}.{index}" if path else str(index)
+            assert_json_matches(actual[index], value, next_path)
+    else:
+        assert actual == expected, path
 
 
 def test_examples_exist():
@@ -40,7 +61,7 @@ def test_example_matches_the_endpoint(auth_client, path):
     response = auth_client.post(url, json=example["request"])
 
     assert response.status_code == example["status"]
-    assert strip(response.json()) == strip(example["response"])
+    assert_json_matches(strip(response.json()), strip(example["response"]))
 
 
 def test_examples_show_what_the_ticket_asks_for():

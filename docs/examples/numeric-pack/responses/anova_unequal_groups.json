@@ -1,0 +1,172 @@
+{
+  "case": "anova_unequal_groups",
+  "outcome": "warning",
+  "dataset": "docs/examples/numeric-pack/datasets/departments.csv",
+  "request": {
+    "comparison_type": "categorical_numeric",
+    "group_column": "department",
+    "value_column": "hours",
+    "method": "welch_anova"
+  },
+  "status": 201,
+  "response": {
+    "comparison_id": 1,
+    "analysis_id": 1,
+    "created_at": "2026-11-05T00:22:18.326354Z",
+    "comparison_type": "categorical_numeric",
+    "design": "independent_groups",
+    "selection": {
+      "group_column": "department",
+      "value_column": "hours"
+    },
+    "status": "ok",
+    "reason": null,
+    "rows": {
+      "total": 117,
+      "included": 117,
+      "excluded": 0,
+      "exclusion_reasons": {
+        "missing_group_value": 0,
+        "missing_or_non_finite_value": 0
+      }
+    },
+    "overall": {
+      "count": 117,
+      "mean": 41.669401709401704,
+      "median": 40.9,
+      "std_dev": 6.21728600987744,
+      "min": 27.61,
+      "q1": 37.96,
+      "q3": 45.37,
+      "max": 59.07,
+      "whisker_low": 27.61,
+      "whisker_high": 55.49,
+      "outlier_count": 2
+    },
+    "groups": [
+      {
+        "label": "A",
+        "count": 50,
+        "mean": 39.8334,
+        "median": 39.76,
+        "std_dev": 4.4612671440536085,
+        "min": 31.11,
+        "q1": 36.845,
+        "q3": 42.4525,
+        "max": 50.57,
+        "whisker_low": 31.11,
+        "whisker_high": 50.57,
+        "outlier_count": 0
+      },
+      {
+        "label": "B",
+        "count": 35,
+        "mean": 43.44485714285714,
+        "median": 42.65,
+        "std_dev": 6.100235468660964,
+        "min": 28.01,
+        "q1": 40.2,
+        "q3": 47.375,
+        "max": 54.91,
+        "whisker_low": 30.97,
+        "whisker_high": 54.91,
+        "outlier_count": 1
+      },
+      {
+        "label": "C",
+        "count": 20,
+        "mean": 45.285999999999994,
+        "median": 46.175,
+        "std_dev": 8.745633737682148,
+        "min": 27.61,
+        "q1": 39.6275,
+        "q3": 51.6925,
+        "max": 59.07,
+        "whisker_low": 27.61,
+        "whisker_high": 59.07,
+        "outlier_count": 0
+      },
+      {
+        "label": "D",
+        "count": 12,
+        "mean": 38.11333333333334,
+        "median": 38.055,
+        "std_dev": 2.98490241452588,
+        "min": 32.61,
+        "q1": 36.5325,
+        "q3": 39.035000000000004,
+        "max": 44.14,
+        "whisker_low": 35.39,
+        "whisker_high": 41.95,
+        "outlier_count": 2
+      }
+    ],
+    "test": {
+      "method": {
+        "key": "welch_anova",
+        "name": "Welch's one-way ANOVA",
+        "evaluates": "Whether the mean of the measurement differs across three or more groups, without assuming the groups have equal variances.",
+        "null_hypothesis": "All groups have equal population means.",
+        "variant": "welch",
+        "assumptions": [
+          "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+          "Each group's mean is approximately normally distributed: the values are roughly normal, or the group is large enough for the central limit theorem to apply. Strong skew or outliers in small groups make the p-value unreliable.",
+          "Group variances may differ. This is Welch's (1951) ANOVA, not the classical F-test, which assumes equal variances.",
+          "Each group needs at least two values with some variation, because groups are weighted by their size divided by their variance."
+        ],
+        "limitations": [
+          "The overall test says whether at least one group mean differs; it does not identify which groups differ. Pairwise (post-hoc) comparisons are not provided.",
+          "A p-value above the chosen significance level does not show the groups are equal; it means this data did not provide clear evidence of a difference.",
+          "Eta squared describes the share of variation between group means in this sample; it does not adjust for unequal variances."
+        ]
+      },
+      "status": "ok",
+      "reason": null,
+      "statistic_name": "F",
+      "statistic": 7.3577923153199185,
+      "degrees_of_freedom": 3,
+      "degrees_of_freedom_between": 3,
+      "degrees_of_freedom_within": 41.33343245483744,
+      "p_value": 0.0004632647583507279,
+      "group_sizes": [
+        {
+          "label": "A",
+          "count": 50
+        },
+        {
+          "label": "B",
+          "count": 35
+        },
+        {
+          "label": "C",
+          "count": 20
+        },
+        {
+          "label": "D",
+          "count": 12
+        }
+      ],
+      "eta_squared": 0.15437692998730082,
+      "eta_squared_calculation": "Sum of squares between group means divided by the total sum of squares around the overall mean (descriptive)."
+    },
+    "warnings": [
+      "Group(s) 'C', 'D' have fewer than 30 values. Welch's ANOVA assumes approximately normal group means, so check those groups for skew or outliers."
+    ],
+    "note": "Each row is treated as an independent observation. Paired or repeated measurements of the same subject are not supported.",
+    "result_version": 2,
+    "analysis_question": {
+      "key": "compare_means",
+      "text": "Does the mean of 'hours' differ across the 'department' groups?"
+    },
+    "method_selection": {
+      "requested": "welch_anova",
+      "selected": "welch_anova",
+      "rule": "Chosen by the request."
+    },
+    "box_plot": {
+      "quartile_method": "linear interpolation (pandas/numpy default)",
+      "whisker_rule": "Tukey: whiskers reach the most extreme values within 1.5 x IQR of the quartiles.",
+      "outliers": "Values beyond the whiskers are counted in outlier_count."
+    }
+  }
+}

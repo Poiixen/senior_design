@@ -96,10 +96,11 @@ can be set with `SUGGESTIONS_AI_MODEL`.
   method is shown as a warning, and the text states that a different p-value or
   fewer warnings do not show the regrouped comparison is more valid.
   Identifier-review warnings arrive through the comparison's own `warnings`.
-* #57 (ANOVA, distribution shape): **not yet verified against real results.**
-  ANOVA is recognised by a method key containing `anova` and treated as a mean
-  comparison, with `eta_squared` and a Welch `mean_difference_ci` shown when
-  present. Skewness is read from `distribution_shape.skewness` on numeric column
-  profiles, and group box plots use `whisker_low`/`whisker_high` when present.
-  These shapes are assumptions until the #57 results exist; adjust `rules.py`
-  if they differ. Reports without them simply produce no such findings.
+* #57 (ANOVA, distribution shape): verified against its real output in
+  `test/test_numeric_pack.py`. Welch's ANOVA has method key `welch_anova` and is
+  treated as a mean comparison, with `eta_squared`. A Welch `mean_difference_ci`
+  (`level`, `lower`, `upper`) is shown when present. Skewness is read from
+  `distribution_shape.skewness` on numeric column profiles. Group box plots use
+  `whisker_low`/`whisker_high`/`outlier_count`. ANOVA also returns
+  `degrees_of_freedom_within`, which the explanation text does not print yet.
+  Reports without these fields produce no such findings.

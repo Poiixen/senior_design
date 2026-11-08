@@ -4,6 +4,7 @@ import pandas as pd
 
 from backend.diagnostics.categorical_comparison import category_distribution
 from backend.diagnostics.comparison_common import ordered_counts
+from backend.diagnostics.distribution_shape import describe_distribution_shape
 from backend.diagnostics.duplicate_detection import detect_duplicates
 from backend.diagnostics.identifier_detection import review_identifier_column
 from backend.diagnostics.missing_value_detection import detect_missing_values
@@ -123,7 +124,8 @@ def profile_dataset(df: pd.DataFrame) -> dict:
                 "q1": safe_number(valid_column.quantile(0.25)),
                 "q3": safe_number(valid_column.quantile(0.75)),
                 "max": safe_number(valid_column.max()),
-                "histogram": numeric_histogram(valid_column)
+                "histogram": numeric_histogram(valid_column),
+                "distribution_shape": describe_distribution_shape(column)
             })
 
         # Categorical columns

@@ -1,0 +1,63 @@
+{
+  "case": "shape_insufficient",
+  "outcome": "unavailable",
+  "dataset": "docs/examples/numeric-pack/datasets/constant.csv",
+  "request": null,
+  "status": 200,
+  "response": {
+    "name": "rare",
+    "dtype": "float64",
+    "non_null_count": 2,
+    "missing_count": 13,
+    "missing_percentage": 86.67,
+    "unique_values": 2,
+    "unique_percentage": 100.0,
+    "mean": 6.375,
+    "median": 6.375,
+    "std_dev": 4.065863991822648,
+    "min": 3.5,
+    "q1": 4.9375,
+    "q3": 7.8125,
+    "max": 9.25,
+    "histogram": {
+      "included_values": 2,
+      "bin_edges": [
+        3.5,
+        6.375,
+        9.25
+      ],
+      "counts": [
+        1,
+        1
+      ]
+    },
+    "distribution_shape": {
+      "status": "unavailable",
+      "reason": "Skewness needs at least 3 finite values; this column has 2.",
+      "measure": {
+        "key": "adjusted_fisher_pearson_skewness",
+        "name": "Adjusted Fisher-Pearson skewness coefficient (G1)",
+        "calculation": "G1 = g1 * sqrt(n * (n - 1)) / (n - 2), where g1 = m3 / m2^1.5 and m2, m3 are the second and third central moments of the finite values. Matches pandas Series.skew and scipy.stats.skew(bias=False).",
+        "thresholds": {
+          "approximately_symmetric": "|skewness| < 0.5",
+          "moderate": "0.5 <= |skewness| < 1",
+          "strong": "|skewness| >= 1",
+          "direction": "negative is left-skewed (long tail of small values); positive is right-skewed (long tail of large values)",
+          "source": "Bulmer (1979), Principles of Statistics"
+        }
+      },
+      "sample_size": 2,
+      "skewness": null,
+      "standard_error": null,
+      "classification": null,
+      "strength": null,
+      "warnings": [],
+      "limitations": [
+        "Approximate symmetry does not mean the values are normally distributed; flat or two-peaked distributions can also have skewness near zero.",
+        "Skewness is sensitive to a few extreme values; check the histogram and outlier counts alongside it.",
+        "Missing, NaN and infinite values are left out."
+      ]
+    },
+    "category": "numeric"
+  }
+}

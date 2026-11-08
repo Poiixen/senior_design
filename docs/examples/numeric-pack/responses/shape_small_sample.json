@@ -1,0 +1,69 @@
+{
+  "case": "shape_small_sample",
+  "outcome": "warning",
+  "dataset": "docs/examples/numeric-pack/datasets/constant.csv",
+  "request": null,
+  "status": 200,
+  "response": {
+    "name": "spread",
+    "dtype": "float64",
+    "non_null_count": 15,
+    "missing_count": 0,
+    "missing_percentage": 0.0,
+    "unique_values": 15,
+    "unique_percentage": 100.0,
+    "mean": 9.871333333333332,
+    "median": 9.67,
+    "std_dev": 1.9387214736472467,
+    "min": 7.29,
+    "q1": 8.51,
+    "q3": 11.125,
+    "max": 13.7,
+    "histogram": {
+      "included_values": 15,
+      "bin_edges": [
+        7.29,
+        8.8925,
+        10.495,
+        12.0975,
+        13.7
+      ],
+      "counts": [
+        4,
+        6,
+        3,
+        2
+      ]
+    },
+    "distribution_shape": {
+      "status": "ok",
+      "reason": null,
+      "measure": {
+        "key": "adjusted_fisher_pearson_skewness",
+        "name": "Adjusted Fisher-Pearson skewness coefficient (G1)",
+        "calculation": "G1 = g1 * sqrt(n * (n - 1)) / (n - 2), where g1 = m3 / m2^1.5 and m2, m3 are the second and third central moments of the finite values. Matches pandas Series.skew and scipy.stats.skew(bias=False).",
+        "thresholds": {
+          "approximately_symmetric": "|skewness| < 0.5",
+          "moderate": "0.5 <= |skewness| < 1",
+          "strong": "|skewness| >= 1",
+          "direction": "negative is left-skewed (long tail of small values); positive is right-skewed (long tail of large values)",
+          "source": "Bulmer (1979), Principles of Statistics"
+        }
+      },
+      "sample_size": 15,
+      "skewness": 0.463948906249733,
+      "standard_error": 0.5801193511153214,
+      "classification": "approximately_symmetric",
+      "strength": null,
+      "warnings": [
+        "Only 15 values were used; with fewer than 50 the skewness estimate is unstable (standard error about 0.58), so treat the classification as tentative."
+      ],
+      "limitations": [
+        "Approximate symmetry does not mean the values are normally distributed; flat or two-peaked distributions can also have skewness near zero.",
+        "Skewness is sensitive to a few extreme values; check the histogram and outlier counts alongside it.",
+        "Missing, NaN and infinite values are left out."
+      ]
+    },
+    "category": "numeric"
+  }
+}
