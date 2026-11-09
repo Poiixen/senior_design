@@ -25,6 +25,7 @@ export interface OutlierResult {
 
 /** Fields the backend profiler reports for every column. */
 interface ColumnProfileBase {
+  identifier_review?: { reasons: string[] };
   name: string;
   dtype: string;
   non_null_count: number;
@@ -35,6 +36,11 @@ interface ColumnProfileBase {
 }
 
 export interface NumericColumnProfile extends ColumnProfileBase {
+  count?: number;
+  whisker_low?: number | null;
+  whisker_high?: number | null;
+  outlier_count?: number | null;
+  distribution_shape?: { status: string; reason?: string | null; classification?: string; skewness?: number | null; sample_size: number; warnings: string[]; limitations: string[] };
   category: "numeric";
   mean: number | null;
   median: number | null;
@@ -100,6 +106,7 @@ export interface DuplicateAnalysisResult {
 }
 
 export interface AnalysisReport {
+  correlation?: { columns: string[]; matrix: (number | null)[][] };
   analysis_id: number;
   filename: string;
   status: "completed" | "running" | "failed";

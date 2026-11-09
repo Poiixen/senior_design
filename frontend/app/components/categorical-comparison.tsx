@@ -4,7 +4,7 @@ import { columnDisplayName, formatNumber, formatPercentage, type AnalysisReport 
 
 const label = (value: string | number | boolean) => String(value);
 
-function ComparisonResult({ result, report }: { result: CategoricalComparison; report: AnalysisReport }) {
+export function ComparisonResult({ result, report }: { result: CategoricalComparison; report: AnalysisReport }) {
   if (result.status === "unavailable") return <p className="notice notice-info">{result.reason ?? "This comparison is unavailable."}</p>;
   const groups = result.group_categories ?? [], outcomes = result.outcome_categories ?? [];
   const counts = result.counts ?? [], percentages = result.row_percentages ?? [];
@@ -17,7 +17,7 @@ function ComparisonResult({ result, report }: { result: CategoricalComparison; r
   </div>;
 }
 
-export function CategoricalComparisonPanel({ report, disabled = false }: { report: AnalysisReport; disabled?: boolean }) {
+export function CategoricalComparisonPanel({ report, disabled = false, onSaved }: { report: AnalysisReport; disabled?: boolean; onSaved?: () => void }) {
   const columns = (report.column_profiles ?? []).filter((profile) => profile.category === "categorical");
   const [groups, setGroups] = useState<string[]>(columns[0]?.name ? [columns[0].name] : []);
   const [outcomes, setOutcomes] = useState<string[]>(columns[1]?.name ? [columns[1].name] : []);
@@ -39,6 +39,7 @@ export function CategoricalComparisonPanel({ report, disabled = false }: { repor
     const completed = settled.flatMap((item) => item.status === "fulfilled" ? [item.value] : []);
     const failed = settled.filter((item) => item.status === "rejected") as PromiseRejectedResult[];
     setResults(completed);
+    if (completed.length) onSaved?.();
     if (failed.length) { const first = failed[0].reason; setError(`${failed.length} of ${settled.length} comparisons could not be completed. ${first instanceof ApiError ? first.message : "Please try again."}`); }
     if (requestRef.current === controller) setLoading(false);
   };

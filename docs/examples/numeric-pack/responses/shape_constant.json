@@ -9,16 +9,16 @@
     "dtype": "float64",
     "non_null_count": 15,
     "missing_count": 0,
-    "missing_percentage": 0.0,
+    "missing_percentage": 0,
     "unique_values": 1,
     "unique_percentage": 6.67,
-    "mean": 7.0,
-    "median": 7.0,
-    "std_dev": 0.0,
-    "min": 7.0,
-    "q1": 7.0,
-    "q3": 7.0,
-    "max": 7.0,
+    "mean": 7,
+    "median": 7,
+    "std_dev": 0,
+    "min": 7,
+    "q1": 7,
+    "q3": 7,
+    "max": 7,
     "histogram": {
       "included_values": 15,
       "bin_edges": [
@@ -56,6 +56,10 @@
         "Missing, NaN and infinite values are left out."
       ]
     },
-    "category": "numeric"
+    "category": "numeric",
+    "count": 15,
+    "whisker_low": 7,
+    "whisker_high": 7,
+    "outlier_count": 0
   }
 }
