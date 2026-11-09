@@ -64,6 +64,16 @@ export interface CategoricalComparison {
 }
 
 export interface ReportSuggestion {
+  /** Client-side provenance retained separately for each fetched page. */
+  wording_source?: "ai" | "fallback";
+  finding_type?: string;
+  finding_id?: string;
+  priority_reason?: string;
+  warnings?: string[];
+  exploratory?: boolean;
+  evidence_refs?: import("./analysis").EvidenceRef[];
+  evidence_values?: Record<string, unknown>;
+  visual?: import("./analysis").VisualSpec;
   title: string;
   affected_columns: string[];
   explanation: string;
@@ -72,6 +82,11 @@ export interface ReportSuggestion {
 }
 
 export interface SuggestionResponse {
+  comparison_ids_used?: number[];
+  evidence_fingerprint?: string;
+  total_findings?: number;
+  offset?: number;
+  has_more?: boolean;
   analysis_id: number;
   source: "ai" | "fallback";
   suggestions: ReportSuggestion[];
@@ -111,7 +126,7 @@ async function requestReport(path: string, init?: RequestInit): Promise<Analysis
   return body;
 }
 
-async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
+export async function requestJson(path: string, init?: RequestInit): Promise<unknown> {
   let response: Response;
   try {
     response = await fetch(`${apiBase}${path}`, { credentials: "include", ...init });
@@ -172,8 +187,8 @@ function isSuggestionResponse(value: unknown): value is SuggestionResponse {
     });
 }
 
-export async function generateReportSuggestions(analysisId: number, signal?: AbortSignal): Promise<SuggestionResponse> {
-  const body = await requestJson(`/api/reports/${analysisId}/suggestions`, { method: "POST", signal });
+export async function generateReportSuggestions(analysisId: number, signal?: AbortSignal, selection?: { comparison_ids: number[]; offset?: number; limit?: number }): Promise<SuggestionResponse> {
+  const body = await requestJson(`/api/reports/${analysisId}/suggestions`, { method: "POST", signal, headers: { "Content-Type": "application/json" }, body: selection ? JSON.stringify(selection) : undefined });
   if (!isSuggestionResponse(body) || body.analysis_id !== analysisId) {
     throw new ApiError("The analysis service returned invalid suggestions.");
   }

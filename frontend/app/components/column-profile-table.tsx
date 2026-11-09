@@ -2,6 +2,7 @@ import { Fragment, useEffect, useId, useRef, useState } from "react";
 import { useRevalidator } from "react-router";
 import { SortButton, type SortDirection } from "~/components/diagnostic-tables";
 import { ApiError, saveColumnDisplayNames } from "~/lib/api";
+import { BoxPlot } from "./evidence-visual";
 import {
   compareMeasurements,
   columnDisplayName,
@@ -85,6 +86,8 @@ function NumericDetails({ profile, displayName }: { profile: NumericColumnProfil
         ))}
       </dl>
       <Histogram profile={profile} displayName={displayName} />
+      <BoxPlot groups={[{ ...profile, label: displayName, count: profile.count ?? profile.histogram?.included_values ?? profile.non_null_count }]} label={displayName} />
+      {profile.distribution_shape && <section><h4>Distribution shape</h4><p>{profile.distribution_shape.status === "ok" ? `${profile.distribution_shape.classification?.replaceAll("_", " ")} · Skewness ${formatNumber(profile.distribution_shape.skewness)} · n=${profile.distribution_shape.sample_size}` : profile.distribution_shape.reason}</p>{[...profile.distribution_shape.warnings, ...profile.distribution_shape.limitations].map((text, i) => <p className="notice notice-info" key={i}>{text}</p>)}</section>}
     </>
   );
 }

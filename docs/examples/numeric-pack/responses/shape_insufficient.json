@@ -11,7 +11,7 @@
     "missing_count": 13,
     "missing_percentage": 86.67,
     "unique_values": 2,
-    "unique_percentage": 100.0,
+    "unique_percentage": 100,
     "mean": 6.375,
     "median": 6.375,
     "std_dev": 4.065863991822648,
@@ -58,6 +58,10 @@
         "Missing, NaN and infinite values are left out."
       ]
     },
-    "category": "numeric"
+    "category": "numeric",
+    "count": 2,
+    "whisker_low": 3.5,
+    "whisker_high": 9.25,
+    "outlier_count": 0
   }
 }

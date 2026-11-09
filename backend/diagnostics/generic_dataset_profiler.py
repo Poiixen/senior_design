@@ -127,6 +127,16 @@ def profile_dataset(df: pd.DataFrame) -> dict:
                 "histogram": numeric_histogram(valid_column),
                 "distribution_shape": describe_distribution_shape(column)
             })
+            # Store actual Tukey endpoints, never substitute the theoretical fences.
+            q1, q3 = valid_column.quantile(0.25), valid_column.quantile(0.75)
+            spread = 1.5 * (q3 - q1)
+            inside = valid_column.between(q1 - spread, q3 + spread)
+            details.update({
+                "count": int(len(valid_column)),
+                "whisker_low": safe_number(valid_column[inside].min()),
+                "whisker_high": safe_number(valid_column[inside].max()),
+                "outlier_count": int((~inside).sum()),
+            })
 
         # Categorical columns
         else:

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import {
   isRouteErrorResponse,
   Link,
@@ -7,7 +8,10 @@ import {
   type ShouldRevalidateFunctionArgs,
 } from "react-router";
 import { ColumnProfileTable } from "~/components/column-profile-table";
-import { CategoricalComparisonPanel } from "~/components/categorical-comparison";
+import { RelationshipExplorer } from "~/components/relationship-explorer";
+import { DuplicateRemovalPreview } from "~/components/report-followup";
+import { CorrelationDetails } from "~/components/evidence-visual";
+import { listComparisons, type Comparison } from "~/lib/analysis";
 import { ReportSuggestions } from "~/components/report-suggestions";
 import { ReportOverview } from "~/components/report-overview";
 import { MissingValueTable, OutlierTable } from "~/components/diagnostic-tables";
@@ -98,6 +102,22 @@ export default function Report({ loaderData }: Route.ComponentProps) {
 }
 
 export function ReportContent({ report, isSample }: { report: AnalysisReport; isSample: boolean }) {
+  return <ReportWorkspace key={report.analysis_id} report={report} isSample={isSample} />;
+}
+
+function ReportWorkspace({ report, isSample }: { report: AnalysisReport; isSample: boolean }) {
+  const [comparisons, setComparisons] = useState<Comparison[]>([]);
+  const [contextRevision, setContextRevision] = useState(0), [comparisonLoading, setComparisonLoading] = useState(!isSample), [comparisonError, setComparisonError] = useState("");
+  const comparisonRequest = useRef<AbortController | null>(null);
+  const refreshComparisons = async () => {
+    if (isSample) return;
+    comparisonRequest.current?.abort(); const controller = new AbortController(); comparisonRequest.current = controller;
+    setComparisonLoading(true); setComparisonError("");
+    try { const next = await listComparisons(report.analysis_id, controller.signal); if (!controller.signal.aborted) setComparisons(next); }
+    catch (error) { if (!controller.signal.aborted) setComparisonError(error instanceof Error ? error.message : "Saved results unavailable."); }
+    finally { if (!controller.signal.aborted) setComparisonLoading(false); }
+  };
+  useEffect(() => { void refreshComparisons(); return () => comparisonRequest.current?.abort(); }, [report.analysis_id, isSample]);
   const [searchParams] = useSearchParams();
   const requestedView = searchParams.get("view");
   const view = isDetailView(requestedView) ? requestedView : "summary";
@@ -126,10 +146,10 @@ export function ReportContent({ report, isSample }: { report: AnalysisReport; is
         ))}
       </nav>
 
-      {view === "summary" && <><Summary report={report} /><ReportSuggestions analysisId={report.analysis_id} disabled={isSample} /></>}
-      {view === "columns" && <div className="report-columns-view"><ColumnProfileTable report={report} /><CategoricalComparisonPanel report={report} disabled={isSample} /></div>}
+      <div hidden={view !== "summary"} className="report-summary-workflow">{view === "summary" && <Summary report={report} />}<ReportSuggestions analysisId={report.analysis_id} disabled={isSample} comparisons={comparisons} contextRevision={contextRevision} comparisonsReady={!comparisonLoading && !comparisonError} />{comparisonError && <p className="notice notice-error" role="alert">{comparisonError} <button type="button" onClick={() => void refreshComparisons()}>Retry saved context</button></p>}</div>
+      {view === "columns" && <div className="report-columns-view"><ColumnProfileTable report={report} /><CorrelationDetails data={report.correlation} /><RelationshipExplorer report={report} disabled={isSample} comparisons={comparisons} loading={comparisonLoading} error={comparisonError} onRetry={() => void refreshComparisons()} onSaved={() => { setContextRevision(n => n + 1); void refreshComparisons(); }} onContextChange={() => setContextRevision(n => n + 1)} /></div>}
       {view === "missing" && <MissingValueTable report={report} />}
-      {view === "duplicates" && <DuplicateAnalysis report={report} />}
+      {view === "duplicates" && <><DuplicateAnalysis report={report} /><DuplicateRemovalPreview key={report.analysis_id} analysisId={report.analysis_id} disabled={isSample} /></>}
       {view === "outliers" && <OutlierTable report={report} />}
 
       <footer className="report-footer">

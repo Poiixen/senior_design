@@ -9,9 +9,9 @@
     "dtype": "float64",
     "non_null_count": 15,
     "missing_count": 0,
-    "missing_percentage": 0.0,
+    "missing_percentage": 0,
     "unique_values": 15,
-    "unique_percentage": 100.0,
+    "unique_percentage": 100,
     "mean": 9.871333333333332,
     "median": 9.67,
     "std_dev": 1.9387214736472467,
@@ -64,6 +64,10 @@
         "Missing, NaN and infinite values are left out."
       ]
     },
-    "category": "numeric"
+    "category": "numeric",
+    "count": 15,
+    "whisker_low": 7.29,
+    "whisker_high": 13.7,
+    "outlier_count": 0
   }
 }

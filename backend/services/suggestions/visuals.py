@@ -74,6 +74,8 @@ def outlier_box(column: str, source: EvidenceRef, outlier: dict, profile: Option
         key: outlier.get(key)
         for key in ("q1", "q3", "iqr", "lower_bound", "upper_bound", "outlier_count")
     }
+    for key in ("count", "whisker_low", "whisker_high"):
+        data[key] = (profile or {}).get(key)
     missing_fields = []
     for key in ("min", "median", "max"):
         value = (profile or {}).get(key)

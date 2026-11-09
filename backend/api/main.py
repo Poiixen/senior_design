@@ -503,6 +503,30 @@ def create_suggestions(
 CONVERSATION_NOT_FOUND = "Conversation not found."
 
 
+@app.post("/api/reports/{analysis_id}/duplicate-preview")
+def preview_duplicate_removal(
+    analysis_id: int, request: Request, user: User = Depends(get_current_user)
+) -> dict:
+    """Count extra exact rows in the stored source without changing any data."""
+    with session_scope(request.app.state.engine) as session:
+        analysis = repository.get_analysis_for_user(session, analysis_id, user.id)
+    if analysis is None:
+        raise HTTPException(status_code=404, detail=REPORT_NOT_FOUND)
+    store = request.app.state.analysis_service.dataset_store
+    rows = store.load(analysis.dataset_id) if store is not None else None
+    if rows is None:
+        raise HTTPException(status_code=409, detail="Source rows are unavailable for this older report. Upload the dataset again to preview duplicate removal.")
+    removed = int(rows.duplicated(keep="first").sum())
+    return {
+        "analysis_id": analysis_id,
+        "original_rows": len(rows),
+        "proposed_removed_rows": removed,
+        "resulting_rows": len(rows) - removed,
+        "definition": "Exact matches across all source columns, including matching missing values. The first occurrence is retained; only extra copies are counted for removal.",
+        "note": "Preview only. No changes were applied. The original dataset and saved reports remain unchanged.",
+    }
+
+
 @app.post("/api/reports/{analysis_id}/conversations", status_code=201)
 def create_conversation(
     analysis_id: int, request: Request, user: User = Depends(get_current_user)
