@@ -23,6 +23,12 @@ from backend.diagnostics.comparison_common import (
     require_categorical,
     require_column,
 )
+from backend.diagnostics.duplicate_cleaning_preview import (
+    ACTION_REMOVE_EXACT_DUPLICATES,
+    SUPPORTED_ACTIONS,
+    dataset_fingerprint,
+    preview_duplicate_removal,
+)
 from backend.diagnostics.generic_dataset_profiler import profile_dataset
 from backend.diagnostics.correlation_analysis import calculate_correlation_matrix
 from backend.diagnostics.identifier_detection import flagged_identifier_reviews
@@ -44,6 +50,14 @@ COMPARISONS = {
     "categorical_categorical": compare_categorical,
     "categorical_numeric": compare_numeric_across_groups,
 }
+
+
+class UnsupportedCleaningAction(ValueError):
+    pass
+
+
+class DatasetChangedSinceAnalysis(Exception):
+    """The stored rows no longer match what the report analyzed."""
 
 
 class DatasetRowsUnavailable(Exception):
@@ -522,6 +536,90 @@ class AnalysisService:
                 result=finite_or_none(result),
             )
             return _comparison_response(comparison)
+
+    def preview_cleaning(
+        self, analysis_id: int, user_id: int, action: str
+    ) -> Optional[dict]:
+        """Preview a cleaning action on the analysis's dataset; change nothing.
+
+        Only ``remove_exact_duplicates`` is supported. Nothing is written:
+        not the stored rows, the report or its saved diagnostics. Returns
+        None when the user does not own the analysis. Raises
+        UnsupportedCleaningAction for other actions, DatasetRowsUnavailable
+        when the rows were not stored, and DatasetChangedSinceAnalysis when
+        the stored rows no longer match the analyzed dimensions.
+        """
+        if action not in SUPPORTED_ACTIONS:
+            raise UnsupportedCleaningAction(
+                f"Unsupported cleaning action '{action}'. "
+                f"Supported actions: {', '.join(SUPPORTED_ACTIONS)}."
+            )
+        with session_scope(self.engine) as session:
+            analysis = repository.get_analysis_for_user(session, analysis_id, user_id)
+            if analysis is None:
+                return None
+            dataset = repository.get_dataset(session, analysis.dataset_id)
+            dataset_id = dataset.id
+            analyzed_rows = dataset.row_count
+            analyzed_columns = dataset.column_count
+        df = (
+            self.dataset_store.load(dataset_id)
+            if self.dataset_store is not None
+            else None
+        )
+        if df is None:
+            raise DatasetRowsUnavailable(
+                "The rows for this report were not stored, so a cleaning preview "
+                "cannot be computed. Upload the file again to preview cleaning."
+            )
+        if len(df) != analyzed_rows or len(df.columns) != analyzed_columns:
+            raise DatasetChangedSinceAnalysis(
+                "The stored rows no longer match the analyzed dataset, so the "
+                "preview was not computed. Upload the file again."
+            )
+
+        result = preview_duplicate_removal(df)
+        removed = result["removed_row_count"]
+        if removed:
+            explanation = (
+                f"Removing exact duplicate rows would drop {removed} of "
+                f"{result['original_row_count']} rows, leaving "
+                f"{result['resulting_row_count']}. Rows must match another row in "
+                "every column, missing values included; the first occurrence of "
+                "each is kept and the remaining rows keep their order."
+            )
+        else:
+            explanation = (
+                "No exact duplicate rows were found, so this action would not "
+                "remove any rows."
+            )
+        return {
+            "preview": True,
+            "applied": False,
+            "action": ACTION_REMOVE_EXACT_DUPLICATES,
+            "analysis_id": analysis_id,
+            "status": "ok" if removed else "no_duplicates",
+            "explanation": explanation,
+            "dataset_version": {
+                "dataset_id": dataset_id,
+                "row_count": analyzed_rows,
+                "column_count": analyzed_columns,
+                "content_hash": dataset_fingerprint(df),
+            },
+            "counts": {
+                "original_rows": result["original_row_count"],
+                "removed_rows": removed,
+                "resulting_rows": result["resulting_row_count"],
+            },
+            "duplicate_group_count": result["duplicate_group_count"],
+            "row_numbering": "1-based position among data rows, header excluded",
+            "groups": result["groups"],
+            "groups_truncated": result["groups_truncated"],
+            "notes": [
+                "Preview only: the uploaded dataset and the saved report are unchanged.",
+                "Missing values in the same column are treated as equal.",
+            ],
+        }
 
     def list_comparisons(self, analysis_id: int, user_id: int) -> list[dict]:
         """Saved comparisons for an analysis the user owns, oldest first."""

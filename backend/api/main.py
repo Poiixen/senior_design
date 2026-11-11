@@ -28,7 +28,12 @@ from backend.models import User
 from backend.models.conversations import QuestionRequest
 from backend.models.suggestions import SuggestionRequest
 from backend.services import conversations
-from backend.services.analysis_service import AnalysisService, DatasetRowsUnavailable
+from backend.services.analysis_service import (
+    AnalysisService,
+    DatasetChangedSinceAnalysis,
+    DatasetRowsUnavailable,
+    UnsupportedCleaningAction,
+)
 from backend.services.suggestions import InvalidComparisonSelection, generate_suggestions
 from backend.services.suggestions.ai_wording import default_complete
 
@@ -498,6 +503,36 @@ def create_suggestions(
     if response is None:
         raise HTTPException(status_code=404, detail=REPORT_NOT_FOUND)
     return response
+
+
+class CleaningPreviewRequest(BaseModel):
+    action: StrictStr
+
+
+@app.post("/api/reports/{analysis_id}/cleaning-previews")
+def create_cleaning_preview(
+    analysis_id: int,
+    selection: CleaningPreviewRequest,
+    request: Request,
+    user: User = Depends(get_current_user),
+) -> dict:
+    """Preview a cleaning action. Nothing is saved or changed.
+
+    Only ``remove_exact_duplicates`` is supported (400 otherwise). A dataset
+    without duplicates gives 200 with ``status`` "no_duplicates"; rows that
+    were not stored, or changed since the analysis, give 409.
+    """
+    try:
+        preview = request.app.state.analysis_service.preview_cleaning(
+            analysis_id, user.id, selection.action
+        )
+    except UnsupportedCleaningAction as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except (DatasetRowsUnavailable, DatasetChangedSinceAnalysis) as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    if preview is None:
+        raise HTTPException(status_code=404, detail=REPORT_NOT_FOUND)
+    return preview
 
 
 CONVERSATION_NOT_FOUND = "Conversation not found."
