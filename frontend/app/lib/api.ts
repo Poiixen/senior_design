@@ -283,3 +283,11 @@ export function verifyEmail(code: string) { return authRequest("verify-email", {
 export function resendVerification() { return authRequest("resend-verification", { method: "POST" }); }
 export function logoutUser() { return authRequest("logout", { method: "POST" }); }
 export function getCurrentUser() { return authRequest("me") as Promise<AuthUser>; }
+
+export async function getAuthMode(): Promise<"shared" | "verified"> {
+  const response = await fetch(apiBase + "/api/auth/config", { credentials: "include" });
+  if (!response.ok) throw new Error("Unable to check access settings.");
+  const body = await response.json();
+  if (body.mode !== "shared" && body.mode !== "verified") throw new Error("Invalid access settings.");
+  return body.mode;
+}

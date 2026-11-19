@@ -11,6 +11,7 @@ services:
       dockerfile: backend/Dockerfile
     restart: unless-stopped
     environment:
+      AUTH_MODE: ${AUTH_MODE:-shared}
       SECRET_KEY: ${SECRET_KEY:?Set a persistent random SECRET_KEY}
       SESSION_COOKIE_SECURE: "true"
       DATABASE_PATH: /data/analysis.sqlite3

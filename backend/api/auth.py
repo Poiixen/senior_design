@@ -1,5 +1,6 @@
-"""Verified accounts and server-revocable login sessions."""
+"""Shared or verified account access with server-revocable sessions."""
 import hmac
+import os
 import re
 import secrets
 from math import isfinite
@@ -15,7 +16,13 @@ from backend.database.connection import session_scope
 from backend.models import User
 from backend.models.account_security import AccountVerification, LoginSession, VerificationChallenge
 from backend.services import auth_service, account_security as security
-from backend.services.showcase import EMAIL
+from backend.services.showcase import EMAIL, is_demo_user
+
+ADMIN_EMAIL = "admin@teamscience.invalid"
+
+
+def shared_access():
+    return os.getenv("AUTH_MODE", "shared") != "verified"
 
 MIN_PASSWORD_LENGTH = 15
 SESSION_IDLE_SECONDS = 5 * 60
@@ -36,7 +43,7 @@ def _public_user(user: User) -> dict:
 
 
 def get_current_user(request: Request) -> User:
-    """Single access boundary for app APIs: valid session AND verified email."""
+    """Require an eligible account and enforce read-only shared demo access."""
     last_activity = request.session.get("last_activity")
     now = time()
     if (type(last_activity) not in (int, float) or not isfinite(last_activity)
@@ -50,16 +57,21 @@ def get_current_user(request: Request) -> User:
         login = session.get(LoginSession, security.digest(token)) if isinstance(token, str) else None
         if login and login.expires_at > now and login.absolute_expires_at > now:
             verification = session.get(AccountVerification, login.user_id)
-            if verification and verification.verified_at is not None:
+            if shared_access() or (verification and verification.verified_at is not None):
                 user = repository.get_user(session, login.user_id)
-                if user and user.email != EMAIL:
+                allowed = user and (user.email in {ADMIN_EMAIL, EMAIL} if shared_access() else user.email != EMAIL)
+                if allowed and (user.email != EMAIL or is_demo_user(request.app.state.engine, user.id)):
                     login.expires_at = min(now + SESSION_IDLE_SECONDS, login.absolute_expires_at)
                 else:
                     user = None
     if user is None:
         request.session.clear()
-        raise HTTPException(401, "Sign in and verify your email to continue.")
+        raise HTTPException(401, "Sign in to continue.")
     request.session["last_activity"] = now
+    if user.email == EMAIL and request.method not in {"GET", "HEAD", "OPTIONS"}:
+        # Suggestions use the deterministic demo path, with no paid AI calls.
+        if not (request.method == "POST" and re.fullmatch(r"/api/reports/[0-9]+/suggestions", request.url.path)):
+            raise HTTPException(403, "Demo access is read-only. Use admin access to make changes.")
     return user
 
 
@@ -86,9 +98,11 @@ def _begin_verification(request: Request, user: User) -> dict:
 
 @router.post("/register", status_code=201)
 def register(credentials: Credentials, request: Request) -> dict:
+    if shared_access():
+        raise HTTPException(403, "Registration is closed. Use admin or demo access.")
     email = auth_service.normalize_email(credentials.email)
     security.limit_auth(request, email, time())
-    if email == EMAIL or not re.fullmatch(
+    if email in {EMAIL, ADMIN_EMAIL} or not re.fullmatch(
         r"[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
         r"(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+", email
     ):
@@ -110,14 +124,18 @@ def register(credentials: Credentials, request: Request) -> dict:
 @router.post("/login")
 def login(credentials: Credentials, request: Request) -> dict:
     email = auth_service.normalize_email(credentials.email)
+    if shared_access():
+        email = {"admin": ADMIN_EMAIL, "demo": EMAIL}.get(email, "invalid-shared-account")
     security.limit_auth(request, email, time())
     with session_scope(request.app.state.engine) as session:
         user = auth_service.authenticate_user(session, email, credentials.password)
         verified = session.get(AccountVerification, user.id) if user else None
         verified = verified is not None and verified.verified_at is not None
-    if user is None or user.email == EMAIL:
+    if user is None or (not shared_access() and user.email == EMAIL):
         raise HTTPException(401, "Invalid email or password.")
-    if not verified:
+    if shared_access() and user.email == EMAIL and not is_demo_user(request.app.state.engine, user.id):
+        raise HTTPException(403, "Demo access is not configured.")
+    if not shared_access() and not verified:
         return _begin_verification(request, user)
     security.revoke_session(request)
     with session_scope(request.app.state.engine) as session:
@@ -127,6 +145,8 @@ def login(credentials: Credentials, request: Request) -> dict:
 
 @router.post("/verify-email")
 def verify_email(payload: VerificationCode, request: Request) -> dict:
+    if shared_access():
+        raise HTTPException(403, "Email verification is not enabled.")
     now = time()
     security.limit(request, "verify-ip", request.client.host if request.client else "unknown", 30, now)
     challenge_id = request.session.get("verification_challenge")
@@ -158,6 +178,8 @@ def verify_email(payload: VerificationCode, request: Request) -> dict:
 
 @router.post("/resend-verification")
 def resend_verification(request: Request) -> dict:
+    if shared_access():
+        raise HTTPException(403, "Email verification is not enabled.")
     security.limit(request, "resend-ip", request.client.host if request.client else "unknown", 10, time())
     challenge_id = request.session.get("verification_challenge")
     with session_scope(request.app.state.engine) as session:
@@ -180,7 +202,12 @@ def logout(request: Request) -> dict:
 
 @router.post("/demo")
 def demo() -> dict:
-    raise HTTPException(403, "Demo login is disabled. Sign in with a verified account.")
+    raise HTTPException(403, "Sign in using the demo password.")
+
+
+@router.get("/config")
+def config() -> dict:
+    return {"mode": "shared" if shared_access() else "verified"}
 
 
 @router.get("/me")

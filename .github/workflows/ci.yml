@@ -3,6 +3,12 @@ name: CI
 # Ticket #30: run the repository's existing automated checks on every pull
 # request so backend and frontend changes both get feedback before merge.
 on:
+  workflow_dispatch:
+    inputs:
+      prepare_only:
+        description: Build and transfer only (use for the first password setup)
+        type: boolean
+        default: true
   pull_request:
   push:
     branches: [main, production]
@@ -10,7 +16,7 @@ on:
 # A new push to the same branch supersedes an in-flight run.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -86,3 +92,68 @@ jobs:
         with:
           name: verified-access-browser-evidence
           path: .run/playwright-results
+
+  deploy:
+    name: Build and deploy production
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && vars.AUTO_DEPLOY == 'true'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: production-deployment
+      cancel-in-progress: false
+    env:
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+      RELEASE: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure deployment SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
+          [[ "$DEPLOY_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+          printf 'Host *\n  BatchMode yes\n  StrictHostKeyChecking yes\n  ServerAliveInterval 15\n  ServerAliveCountMax 8\n' > ~/.ssh/config
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" 'test -f /root/team-science/.env && docker info >/dev/null'
+
+      - name: Build immutable release images on GitHub
+        run: |
+          docker build -f backend/Dockerfile -t "team-science-api:$RELEASE" .
+          docker build -f frontend/Dockerfile -t "team-science-frontend:$RELEASE" frontend
+
+      - name: Transfer release without changing running containers
+        run: |
+          set -euo pipefail
+          # RELEASE is the trusted GitHub commit SHA; expand it on the runner.
+          # shellcheck disable=SC2029
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p /root/team-science/.incoming/$RELEASE/deploy"
+          docker save "team-science-api:$RELEASE" "team-science-frontend:$RELEASE" | gzip -1 | ssh "$DEPLOY_USER@$DEPLOY_HOST" 'gunzip | docker load'
+          printf 'API_IMAGE=team-science-api:%s\nFRONTEND_IMAGE=team-science-frontend:%s\n' "$RELEASE" "$RELEASE" > images.env
+          scp compose.small.yaml images.env "$DEPLOY_USER@$DEPLOY_HOST:/root/team-science/.incoming/$RELEASE/"
+          scp deploy/Caddyfile deploy/apply-release.sh deploy/activate-first-release.sh "$DEPLOY_USER@$DEPLOY_HOST:/root/team-science/.incoming/$RELEASE/deploy/"
+
+      - name: Apply release and verify website
+        if: github.event_name == 'push' || !inputs.prepare_only
+        run: |
+          # Expand the trusted commit SHA on the runner.
+          # shellcheck disable=SC2029
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "bash /root/team-science/.incoming/$RELEASE/deploy/apply-release.sh $RELEASE"
+
+      - name: Record prepared release
+        run: |
+          printf 'Release: %s\n\nServer directory: /root/team-science/.incoming/%s\n' "$RELEASE" "$RELEASE" >> "$GITHUB_STEP_SUMMARY"
+          printf 'For first-time password setup, follow docs/automatic-deployment.md.\n' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove runner SSH credentials
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519
