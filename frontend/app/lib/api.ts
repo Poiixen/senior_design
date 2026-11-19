@@ -64,6 +64,9 @@ export interface CategoricalComparison {
 }
 
 export interface ReportSuggestion {
+  plain_summary?: string | null;
+  recommended_action?: string | null;
+  plain_caution?: string | null;
   /** Client-side provenance retained separately for each fetched page. */
   wording_source?: "ai" | "fallback";
   finding_type?: string;
@@ -187,7 +190,7 @@ function isSuggestionResponse(value: unknown): value is SuggestionResponse {
     });
 }
 
-export async function generateReportSuggestions(analysisId: number, signal?: AbortSignal, selection?: { comparison_ids: number[]; offset?: number; limit?: number }): Promise<SuggestionResponse> {
+export async function generateReportSuggestions(analysisId: number, signal?: AbortSignal, selection?: { comparison_ids?: number[]; offset?: number; limit?: number }): Promise<SuggestionResponse> {
   const body = await requestJson(`/api/reports/${analysisId}/suggestions`, { method: "POST", signal, headers: { "Content-Type": "application/json" }, body: selection ? JSON.stringify(selection) : undefined });
   if (!isSuggestionResponse(body) || body.analysis_id !== analysisId) {
     throw new ApiError("The analysis service returned invalid suggestions.");

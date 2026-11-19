@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { createComparison, type Category, type Comparison, type Mapping, type NumericComparison } from "~/lib/analysis";
-import { columnDisplayName, formatNumber, type AnalysisReport, type CategoricalColumnProfile } from "~/lib/report";
+import { columnDisplayName, formatNumber, formatPValue, type AnalysisReport, type CategoricalColumnProfile } from "~/lib/report";
 import { CategoricalComparisonPanel, ComparisonResult } from "./categorical-comparison";
 import { Bars, BoxPlot, EvidenceTable, EvidenceVisual } from "./evidence-visual";
 
@@ -34,7 +34,7 @@ function NumericResult({ result }: { result: NumericComparison }) {
   const t = result.test, groups = result.groups ?? [];
   return <><h4>{t.method.name}</h4><p>{result.analysis_question?.text ?? t.method.evaluates}</p><p>{t.method.key === "kruskal_wallis" ? "Rank comparison, not a comparison of means." : "Mean comparison."}</p>{result.method_selection && <p>{result.method_selection.rule}</p>}
     <p>Rows: {result.rows.included} included / {result.rows.total} total; {result.rows.excluded} excluded.</p><EvidenceTable data={{ exclusion_reasons: result.rows.exclusion_reasons }} /><p className="muted">Exclusion reasons can overlap for the same row.</p>
-    {result.status === "unavailable" && <p className="notice notice-warning">{result.reason}</p>}{t.status !== "ok" ? <p className="notice notice-warning">{t.reason}</p> : <p>{t.statistic_name ?? "Statistic"}: {formatNumber(t.statistic)} · Degrees of freedom: {formatNumber(t.degrees_of_freedom)}{t.degrees_of_freedom_within != null && `, denominator ${formatNumber(t.degrees_of_freedom_within)}`} · p-value: {t.p_value != null && t.p_value > 0 && t.p_value < .0001 ? t.p_value.toExponential(3) : formatNumber(t.p_value)}</p>}
+    {result.status === "unavailable" && <p className="notice notice-warning">{result.reason}</p>}{t.status !== "ok" ? <p className="notice notice-warning">{t.reason}</p> : <p>{t.statistic_name ?? "Statistic"}: {formatNumber(t.statistic)} · Degrees of freedom: {formatNumber(t.degrees_of_freedom)}{t.degrees_of_freedom_within != null && `, denominator ${formatNumber(t.degrees_of_freedom_within)}`} · p-value: {formatPValue(t.p_value)}</p>}
     {t.mean_difference_ci && <p>{t.mean_difference_ci.level * 100}% confidence interval for the mean difference ({t.difference_order?.map(String).join(" minus ")}): [{formatNumber(t.mean_difference_ci.lower)}, {formatNumber(t.mean_difference_ci.upper)}]; difference {formatNumber(t.mean_difference)}. {t.mean_difference_ci.calculation}</p>}
     <p>{result.note}</p>{t.method.limitations?.map(l => <p key={l}>{l}</p>)}<details><summary>Method assumptions</summary><ul>{t.method.assumptions?.map(a => <li key={a}>{a}</li>)}</ul></details>
     {result.warnings.map(w => <p className="notice notice-warning" key={w}>{w}</p>)}

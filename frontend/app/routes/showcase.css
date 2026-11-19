@@ -1,0 +1,16 @@
+.showcase { width: min(100%, 960px); min-width: 0; margin: auto; padding: clamp(12px, 4vw, 40px); overflow-wrap: anywhere; box-sizing: border-box; }
+.showcase h1 { font-size: clamp(1.8rem, 6vw, 3rem); line-height: 1.15; }
+.showcase p, .showcase li { line-height: 1.6; }
+.showcase nav { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0; }
+.showcase a, .showcase button, .showcase summary { min-height: 44px; display: inline-flex; align-items: center; padding: 8px; box-sizing: border-box; }
+.showcase section { min-width: 0; margin-block: 32px; scroll-margin-top: 20px; }
+.showcase details { padding: 12px; border: 1px solid var(--border, #bbb); border-radius: 12px; margin: 12px 0; }
+.showcase svg { max-width: 100%; height: auto; }
+.showcase .panel { min-width: 0; margin-block: 16px; }
+.showcase-counts { display: flex; flex-wrap: wrap; gap: 12px; }
+.showcase-counts p { flex: 1; padding: 12px; border: 1px solid var(--border, #bbb); border-radius: 12px; }
+.showcase-counts strong { display: block; font-size: 1.5rem; }
+.showcase .suggestion-card { margin-block: 16px; padding: 16px; border: 1px solid var(--border, #bbb); border-radius: 12px; }
+.finding-statistics { margin-block: 12px; }
+.showcase .diagnostic-table-scroll { max-width: 100%; overflow-x: auto; }
+@media (max-width: 480px) { .showcase .evidence-bar-row { grid-template-columns: minmax(0, 1fr); } .showcase figure { margin-inline: 0; } }

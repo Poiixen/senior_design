@@ -58,6 +58,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       }
       setUser(null); setLoading(false); setError("");
       const location = currentLocation.current;
+      if (location.pathname === "/showcase/report") navigate("/showcase", { replace: true });
       if (["/dashboard", "/upload", "/reports", "/settings"].includes(location.pathname) || (location.pathname.startsWith("/reports/") && location.pathname !== "/reports/sample")) {
         navigate(`/login?next=${encodeURIComponent(location.pathname + location.search)}`, { replace: true });
       }

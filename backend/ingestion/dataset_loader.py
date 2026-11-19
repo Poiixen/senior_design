@@ -3,12 +3,15 @@
 import json
 import os
 from pathlib import Path
+from zipfile import BadZipFile, ZipFile
 
 import pandas as pd
 
 from backend.ingestion.csv_loader import CSVLoadError, load_csv
 
 SUPPORTED_FILE_EXTENSIONS = {".csv", ".tsv", ".xlsx", ".json"}
+MAX_XLSX_EXPANDED_BYTES = 50 * 1024 * 1024
+MAX_XLSX_MEMBERS = 2000
 
 
 class DatasetLoadError(Exception):
@@ -33,6 +36,15 @@ def load_dataset(file_path: str, file_name: str, **options) -> pd.DataFrame:
                 options["sep"] = "\t"
             return load_csv(file_path, **options)
         if extension == ".xlsx":
+            # XLSX is a ZIP archive: the compressed upload limit alone cannot
+            # bound the XML the spreadsheet reader will expand into memory.
+            with ZipFile(file_path) as archive:
+                members = archive.infolist()
+                if (len(members) > MAX_XLSX_MEMBERS or
+                        sum(member.file_size for member in members) > MAX_XLSX_EXPANDED_BYTES):
+                    raise DatasetLoadError("Excel workbook exceeds the expanded size or entry limit.")
+                if any(member.flag_bits & 1 for member in members):
+                    raise DatasetLoadError("Encrypted Excel workbooks are not supported.")
             frame = pd.read_excel(file_path, sheet_name=0)
         else:
             with open(file_path, encoding="utf-8") as source:
@@ -48,7 +60,7 @@ def load_dataset(file_path: str, file_name: str, **options) -> pd.DataFrame:
         raise DatasetLoadError("The CSV or TSV file could not be parsed. Check its formatting.") from exc
     except UnicodeDecodeError as exc:
         raise DatasetLoadError("The file encoding is not supported. Use UTF-8 or ASCII.") from exc
-    except (json.JSONDecodeError, ValueError, TypeError) as exc:
+    except (BadZipFile, json.JSONDecodeError, ValueError, TypeError) as exc:
         label = "JSON" if extension == ".json" else "Excel workbook"
         raise DatasetLoadError(f"The {label} could not be parsed.") from exc
     except (OSError, ImportError) as exc:

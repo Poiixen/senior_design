@@ -1,0 +1,70 @@
+name: team-science
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 2m
+    max-file: "2"
+services:
+  api:
+    image: team-science-api:showcase
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?Set a persistent random SECRET_KEY}
+      SESSION_COOKIE_SECURE: "true"
+      DATABASE_PATH: /data/analysis.sqlite3
+      DATASET_STORAGE_DIR: /data/datasets
+      CORS_ALLOWED_ORIGINS: https://${DOMAIN:?Set DOMAIN}
+      SHOWCASE_ENABLED: "true"
+      PUBLIC_RATE_LIMITS: "true"
+      MAX_UPLOAD_SIZE: "1048576"
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+    volumes:
+      - app-data:/data
+    mem_limit: 320m
+    memswap_limit: 832m
+    cpus: 0.85
+    command: [uvicorn, 'backend.api.main:app', --host, '0.0.0.0', --port, '8000', --workers, '1', --proxy-headers, --forwarded-allow-ips, '*', --limit-concurrency, '8', --timeout-keep-alive, '2']
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    logging: *logging
+  frontend:
+    image: team-science-frontend:showcase
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3000"
+      NODE_OPTIONS: --max-old-space-size=64
+    mem_limit: 96m
+    memswap_limit: 192m
+    logging: *logging
+  proxy:
+    image: caddy:2-alpine
+    mem_limit: 64m
+    memswap_limit: 128m
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN}
+      WWW_DOMAIN: www.${DOMAIN:?Set the bare domain without www}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    logging: *logging
+volumes:
+  app-data:
+  caddy-data:
+  caddy-config:

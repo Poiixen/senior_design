@@ -1,6 +1,5 @@
 import json
 import os
-import secrets
 import tempfile
 import traceback
 from contextlib import asynccontextmanager
@@ -14,6 +13,7 @@ from sqlalchemy.engine import Engine
 from starlette.middleware.sessions import SessionMiddleware
 
 from backend.api.auth import SESSION_IDLE_SECONDS, get_current_user, router as auth_router
+from backend.api.security import BrowserSecurity, session_secret
 from backend.database import repository
 from backend.database.connection import (
     DEFAULT_DATABASE_PATH,
@@ -36,6 +36,7 @@ from backend.services.analysis_service import (
 )
 from backend.services.suggestions import InvalidComparisonSelection, generate_suggestions
 from backend.services.suggestions.ai_wording import default_complete
+from backend.services.showcase import is_demo_user
 
 
 def configure_database(
@@ -79,6 +80,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Team Science API", lifespan=lifespan)
+if os.getenv("PUBLIC_RATE_LIMITS", "").lower() == "true":
+    from backend.api.public_limits import PublicLimits
+    app.add_middleware(PublicLimits)
 
 allowed_origins = [
     origin.strip()
@@ -90,11 +94,12 @@ allowed_origins = [
 ]
 # Signs the session cookie. Without SECRET_KEY a random key is used, so
 # logins reset whenever the server restarts; set it for stable sessions.
+secure_cookie = os.getenv("SESSION_COOKIE_SECURE", "").lower() in ("1", "true")
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv("SECRET_KEY") or secrets.token_urlsafe(32),
+    secret_key=session_secret(os.getenv("SECRET_KEY"), secure_cookie),
     same_site="lax",
-    https_only=os.getenv("SESSION_COOKIE_SECURE", "").lower() in ("1", "true"),
+    https_only=secure_cookie,
     max_age=SESSION_IDLE_SECONDS,
 )
 
@@ -103,11 +108,12 @@ if allowed_origins:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "PATCH"],
         allow_headers=["*"],
         allow_credentials=True,
     )
 
+app.add_middleware(BrowserSecurity, allowed_origins=allowed_origins)
 app.include_router(auth_router)
 
 # Configuration: Maximum upload size in bytes (100 MB default)
@@ -496,7 +502,8 @@ def create_suggestions(
             analysis_id,
             user.id,
             selection,
-            getattr(request.app.state, "suggestion_complete", None) or default_complete(),
+            None if is_demo_user(request.app.state.engine, user.id) else
+            (getattr(request.app.state, "suggestion_complete", None) or default_complete()),
         )
     except InvalidComparisonSelection as exc:
         raise HTTPException(status_code=400, detail=str(exc))

@@ -27,7 +27,8 @@ test("public examples stay outside the workspace and private URLs require sign-i
   page.on("request", request => { if (/\/api\/(reports|analyze)/.test(request.url())) workspaceRequests.push(request.url()); });
   await page.goto("/");
   await expect(page.locator('a[href="/dashboard"], a[href="/upload"], a[href="/reports"], a[href="/settings"]')).toHaveCount(0);
-  await page.getByRole("link", { name: /Explore a sample report/ }).click();
+  await expect(page.getByRole("link", { name: /Try Demo/ })).toHaveAttribute("href", "/showcase");
+  await page.getByRole("link", { name: "View report", exact: true }).click();
   await expect(page).toHaveURL(/\/example-report$/);
   for (const name of ["Columns", "Missing values", "Duplicates", "Outliers", "Overview"]) {
     await page.getByRole("navigation", { name: "Report views" }).getByRole("link", { name, exact: true }).click();

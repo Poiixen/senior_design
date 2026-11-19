@@ -1,0 +1,29 @@
+{$WWW_DOMAIN} {
+    redir https://{$DOMAIN}{uri} permanent
+}
+
+{$DOMAIN} {
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+        Content-Security-Policy "frame-ancestors 'none'; object-src 'none'; base-uri 'self'"
+        -Server
+    }
+    encode zstd gzip
+    request_body {
+        max_size 11MB
+    }
+    @api path /api/* /health
+    handle @api {
+        reverse_proxy api:8000 {
+            transport http {
+                response_header_timeout 120s
+            }
+        }
+    }
+    handle {
+        reverse_proxy frontend:3000
+    }
+}

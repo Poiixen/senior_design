@@ -12,7 +12,7 @@ export function EvidenceTable({ data }: { data: Record<string, unknown> }) {
     if (value && typeof value === "object") return Object.entries(value).flatMap(([k, v]) => flatten(v, [path, k.replaceAll("_", " ")].filter(Boolean).join(" · ")));
     return [[path, value]];
   };
-  return <div className="diagnostic-table-scroll" tabIndex={0}><table className="diagnostic-table"><caption>Saved evidence values</caption><tbody>{flatten(data, "").map(([key, value], i) => <tr key={i}><th scope="row">{key}</th><td className="evidence-value">{display(value)}</td></tr>)}</tbody></table></div>;
+  return <div className="diagnostic-table-scroll" tabIndex={0}><table className="diagnostic-table"><caption>Saved evidence values</caption><tbody>{flatten(data, "").map(([key, value], i) => <tr key={i}><th scope="row">{key}</th><td className="evidence-value">{key.includes("p value") && finite(value) && value < 0.001 ? "p < 0.001" : display(value)}</td></tr>)}</tbody></table></div>;
 }
 
 export function Bars({ rows, unit = "" }: { rows: { label: string; value: number }[]; unit?: string }) {
@@ -27,21 +27,21 @@ export function CorrelationDetails({ data }: { data?: { columns: string[]; matri
   return <section className="panel relationship-explorer" id="correlation"><h2>Numerical correlations</h2><p>Saved Pearson correlations (−1 to 1). Missing values are excluded per pair. Pair sample sizes and row-level points were not saved; correlation does not establish causation.</p><div className="diagnostic-table-scroll" tabIndex={0}><table className="diagnostic-table"><caption>Correlation heatmap and accessible coefficient table · all saved numeric columns</caption><thead><tr><th>Column</th>{columns.map(c => <th key={c}>{c}</th>)}</tr></thead><tbody>{columns.map((c, i) => <tr key={c}><th scope="row">{c}</th>{columns.map((other, j) => { const value = matrix[i]?.[j]; return <td key={other} style={{ backgroundColor: finite(value) ? `rgba(${value < 0 ? "53,109,208" : "104,84,232"},${.08 + .4 * Math.abs(value)})` : undefined }}>{formatNumber(value)}</td>; })}</tr>)}</tbody></table></div></section>;
 }
 
-export function BoxPlot({ groups, label }: { groups: NumericSummary[]; label: string }) {
+export function BoxPlot({ groups, label, compact = false }: { groups: NumericSummary[]; label: string; compact?: boolean }) {
   if (!groups.length || groups.some(g => ![g.q1, g.median, g.q3].every(finite))) return <p className="notice notice-info">Box plot unavailable: saved quartiles or medians are missing. See the evidence table.</p>;
   const values = groups.flatMap(g => [g.min, g.whisker_low, g.q1, g.median, g.q3, g.whisker_high, g.max]).filter(finite);
   const low = Math.min(...values), high = Math.max(...values);
   const x = (n: number) => 25 + (n - low) / (high - low || 1) * 550;
   const hasWhiskers = groups.every(g => finite(g.whisker_low) && finite(g.whisker_high));
-  return <div className="box-plots">{groups.map((g, i) => <div key={i}><p><strong>{String(g.label ?? label)}</strong> · n = {formatNumber(g.count)} · Median {formatNumber(g.median)} · Outliers {formatNumber(g.outlier_count)}</p><svg viewBox="0 0 600 70" role="img" aria-label={`${String(g.label ?? label)}: Q1 ${g.q1}, median ${g.median}, Q3 ${g.q3}; whiskers ${g.whisker_low ?? "unavailable"} to ${g.whisker_high ?? "unavailable"}`}>
+  return <div className="box-plots">{groups.map((g, i) => <div key={i}><p><strong>{String(g.label ?? label)}</strong> · {formatNumber(g.count)} values · Middle value {formatNumber(g.median)}{!compact && <> · Outliers {formatNumber(g.outlier_count)}</>}</p><svg viewBox="0 0 600 70" role="img" aria-label={`${String(g.label ?? label)}: Q1 ${g.q1}, median ${g.median}, Q3 ${g.q3}; whiskers ${g.whisker_low ?? "unavailable"} to ${g.whisker_high ?? "unavailable"}`}>
     {finite(g.whisker_low) && finite(g.whisker_high) && <g stroke="currentColor"><line x1={x(g.whisker_low)} x2={x(g.whisker_high)} y1="25" y2="25" /><line x1={x(g.whisker_low)} x2={x(g.whisker_low)} y1="15" y2="35" /><line x1={x(g.whisker_high)} x2={x(g.whisker_high)} y1="15" y2="35" /></g>}
     <rect x={x(g.q1!)} y="10" width={Math.max(1, x(g.q3!) - x(g.q1!))} height="30" fill="var(--accent, #6854e8)" opacity=".35" stroke="currentColor" />
     <line x1={x(g.median!)} x2={x(g.median!)} y1="10" y2="40" stroke="currentColor" strokeWidth="3" />
     <text x="25" y="63">{formatNumber(low)}</text><text x="575" y="63" textAnchor="end">{formatNumber(high)}</text><text x="300" y="63" textAnchor="middle">{label}</text>
-  </svg></div>)}<p className="muted">Boxes show Q1–Q3 with the median. {hasWhiskers ? "Whiskers reach the most extreme observed values within 1.5 × IQR of the quartiles; they are not confidence intervals." : "Actual whisker endpoints were not saved; only quartiles and medians are drawn."} Individual outlier points are unavailable; no points are sampled or invented.</p></div>;
+  </svg></div>)}<p className="muted">{compact ? "The line marks the middle value. The box covers the middle half of values." : <>Boxes show Q1–Q3 with the median. {hasWhiskers ? "Whiskers reach the most extreme observed values within 1.5 × IQR of the quartiles; they are not confidence intervals." : "Actual whisker endpoints were not saved; only quartiles and medians are drawn."} Individual outlier points are unavailable; no points are sampled or invented.</>}</p></div>;
 }
 
-export function EvidenceVisual({ spec }: { spec: VisualSpec }) {
+export function EvidenceVisual({ spec, compact = false }: { spec: VisualSpec; compact?: boolean }) {
   const d = spec.data ?? {};
   let chart: ReactNode = null;
   let reason = spec.fallback_reason;
@@ -55,7 +55,7 @@ export function EvidenceVisual({ spec }: { spec: VisualSpec }) {
   } else if (spec.chart_type === "grouped_box" || spec.chart_type === "box_plot") {
     const groups = spec.chart_type === "grouped_box" ? records(d.groups) : [d];
     if (groups.length && groups.every(g => [g.q1, g.median, g.q3].every(finite))) {
-      chart = <BoxPlot groups={groups as unknown as NumericSummary[]} label={spec.y_label ?? spec.title} />;
+      chart = <BoxPlot groups={groups as unknown as NumericSummary[]} label={spec.y_label ?? spec.title} compact={compact} />;
     } else reason = "Box plot unavailable: saved quartiles or medians are missing. Available evidence is shown below.";
   } else if (spec.chart_type === "before_after_bar" && Array.isArray(d.before) && Array.isArray(d.after)) {
     const all = [...records(d.before), ...records(d.after)];
@@ -71,5 +71,5 @@ export function EvidenceVisual({ spec }: { spec: VisualSpec }) {
     chart = <div className="correlation-focus"><strong>{formatNumber(d.value)}</strong><p>{spec.x_label} ↔ {spec.y_label}</p><p>Saved correlation coefficient (−1 to 1). Association does not establish causation.</p></div>;
   }
   if (!chart && !reason) reason = "Chart evidence is unavailable or this visual type is not supported. Saved values are shown below.";
-  return <figure className="evidence-visual"><figcaption><strong>{spec.title}</strong></figcaption><p className="muted">{[spec.x_label, spec.y_label, spec.units && `Units: ${spec.units}`, spec.percent_denominator && `Percentage denominator: ${spec.percent_denominator}`].filter(Boolean).join(" · ")}</p>{spec.warnings?.map((w, i) => <p className="notice notice-warning" key={i}>{w}</p>)}{spec.unavailable_fields?.length ? <p className="muted">Unavailable fields: {spec.unavailable_fields.join(", ")}</p> : null}{reason && <p className="notice notice-info">{reason}</p>}{chart}<details open={!chart}><summary>Accessible evidence table</summary><EvidenceTable data={d} /></details></figure>;
+  return <figure className="evidence-visual"><figcaption><strong>{spec.title}</strong></figcaption>{!compact && <p className="muted">{[spec.x_label, spec.y_label, spec.units && `Units: ${spec.units}`, spec.percent_denominator && `Percentage denominator: ${spec.percent_denominator}`].filter(Boolean).join(" · ")}</p>}{!compact && spec.warnings?.map((w, i) => <p className="notice notice-warning" key={i}>{w}</p>)}{!compact && spec.unavailable_fields?.length ? <p className="muted">Unavailable fields: {spec.unavailable_fields.join(", ")}</p> : null}{reason && <p className="notice notice-info">{reason}</p>}{chart}<details open={!chart}><summary>Accessible evidence table</summary><EvidenceTable data={d} /></details></figure>;
 }

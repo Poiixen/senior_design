@@ -64,7 +64,7 @@ def _p(value) -> str:
     """A p-value, in scientific notation when below 0.001."""
     if value is None:
         return "n/a"
-    return f"{value:.2e}" if value < 0.001 else f"{value:.3f}"
+    return "< 0.001" if value < 0.001 else f"{value:.3f}"
 
 
 def _df(value) -> str:
@@ -219,7 +219,13 @@ def _outliers(c: Candidate) -> dict:
         "title": f"Review outlying values in {col}",
         "text": (
             f"{count} values in {col} ({percent}) fall outside the IQR bounds of {bounds}. "
-            "They are unusual for this column but are not necessarily errors."
+            "IQR is Q3 minus Q1, the spread of the middle half of values. The fences are "
+            "Q1 - 1.5 × IQR through Q3 + 1.5 × IQR. Flags invite review, not automatic exclusion. "
+            "A high flag rate in a concentrated or discrete column does not establish errors. "
+            + ("Here Q1 equals Q3, so IQR is zero. Values different from that quartile are flagged. "
+               "When both quartiles are zero, every positive value exceeds the zero upper fence. "
+               "Inspect the distribution and interpret nonzero values separately. "
+               if v.get("q1") is not None and v.get("q1") == v.get("q3") else "")
         ),
         "evidence": [
             f"{count} outlying values ({percent} of values).",
@@ -271,7 +277,7 @@ def _skew(c: Candidate) -> dict:
     tail = "large" if v["direction"] == "right" else "small"
 
     return {
-        "title": f"Review the skewed distribution of {col}",
+        "title": f"Review unusually {('high' if v['direction'] == 'right' else 'low')} {col} values",
         "text": (
             f"{col} is skewed to the {v['direction']} (skewness {skewness}), with a long "
             f"tail of {tail} values. The mean can be pulled toward the tail, so the median may "
@@ -351,7 +357,7 @@ def _group_result(v: dict, ranks: bool, many: bool) -> str:
     if v.get("degrees_of_freedom") is not None:
         statistic += f" with {_df(v['degrees_of_freedom'])} degrees of freedom"
 
-    p = _p(v["p_value"])
+    p = _p(v.get("p_value_adjusted", v["p_value"]))
     if v["significant_at_0_05"]:
         reading = (
             f"The p-value ({p}) is below 0.05, so the data show evidence of a "
@@ -379,7 +385,9 @@ def _group_effect(v: dict, value_col: str, stat: str):
         label = _size_label(effect, COHENS_D_CUTS)
         sentences.append(
             f"The group means are {_n(effect)} pooled standard deviations apart (Cohen's d), "
-            f"a {label} gap by Cohen's benchmarks."
+            f"a {label} gap by Cohen's benchmarks. "
+            "Cohen's d is the difference between two group means in pooled standard deviation units; "
+            "d = 0.50 means a half-SD difference. Benchmarks are conventions, not automatic practical importance."
         )
         evidence.append(f"Effect size: Cohen's d = {_n(effect)} ({label}).")
         labelled = True
@@ -473,7 +481,7 @@ def _group_difference(c: Candidate) -> dict:
     evidence = [
         f"Method: {name} ({'rank' if ranks else 'mean'} comparison).",
         f"{v['statistic_name'] or 'Statistic'} = {_n(v['statistic'])}, "
-        f"degrees of freedom = {_df(v.get('degrees_of_freedom'))}, p-value = {_p(v['p_value'])}.",
+        f"degrees of freedom = {_df(v.get('degrees_of_freedom'))}, raw p {_p(v['p_value'])}.",
     ]
     if ci:
         evidence.append(
@@ -515,7 +523,7 @@ def _categorical(c: Candidate) -> dict:
     v = c.values
     group_col, outcome_col = c.columns
     name = v.get("method_name") or "The test"
-    p = _p(v["p_value"])
+    p = _p(v.get("p_value_adjusted", v["p_value"]))
     dof = _df(v["degrees_of_freedom"])
     statistic_name = "Chi-square" if "chi_square" in str(v.get("method_key")) else "Statistic"
 
@@ -525,7 +533,7 @@ def _categorical(c: Candidate) -> dict:
     if cramers_v is not None and cuts:
         label = _size_label(cramers_v, cuts, ("weak", "moderate", "strong"))
 
-    scale = "(0 means no association, 1 means complete association)."
+    scale = "(0 means no association, 1 means the strongest possible association for the table). It indicates neither direction nor causality."
     if cramers_v is None:
         strength = "No association strength was available."
         strength_evidence = strength
@@ -566,7 +574,7 @@ def _categorical(c: Candidate) -> dict:
     sizes = v.get("group_sizes") or []
     evidence = [
         f"Method: {name}.",
-        f"{statistic_name} = {_n(v['statistic'])}, degrees of freedom = {dof}, p-value = {p}.",
+        f"{statistic_name} = {_n(v['statistic'])}, degrees of freedom = {dof}, p {p}.",
         strength_evidence,
         *([_sizes_line(sizes)] if sizes else []),
         _rows_line(v),
@@ -667,6 +675,25 @@ BUILDERS = {
 def describe(candidate: Candidate) -> dict:
     """Return ``title``, ``explanation``, ``evidence`` and ``next_steps``."""
     parts = BUILDERS[candidate.finding_type](candidate)
+    v = candidate.values
+    if v.get("p_adjustment"):
+        parts["evidence"].append(
+            f"Raw p {_p(v.get('p_value'))}; Holm-adjusted p {_p(v.get('p_value_adjusted'))}. "
+            f"Correction family: {v['p_adjustment']['comparisons']} distinct selected saved comparisons."
+        )
+        parts["text"] += (" Holm's method adjusts p-values across multiple comparisons to reduce false positives. "
+                          "The significance reading uses the adjusted value for distinct selected saved comparisons only; "
+                          "other analyses are not included in this correction.")
+    if candidate.finding_type == "categorical_association" and any("expected" in w.lower() for w in candidate.warnings):
+        parts["text"] = ("Small expected counts can make the chi-square p-value unreliable; interpret it cautiously. "
+                         "Combining substantively related rare categories can increase expected counts, but changes "
+                         "the hypothesis tested. " + parts["text"])
+    visual = candidate.visual
+    chart_step = (f'Inspect "{visual.title}" ({visual.chart_type.replace("_", " ")}) to assess the finding.'
+                  if visual and visual.chart_type != "evidence_table" else
+                  "No chart is available for this finding; inspect the saved evidence table below.")
+    parts["next_steps"] = [chart_step] + [step for step in parts["next_steps"]
+        if "Use the chart" not in step and "Review the histogram" not in step]
     return {
         "title": parts["title"],
         "explanation": _with_warnings(candidate, parts["text"]),

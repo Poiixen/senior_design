@@ -7,15 +7,17 @@ from backend.database.connection import session_scope
 from backend.models.suggestions import Suggestion, SuggestionRequest, SuggestionResponse
 from backend.services.suggestions import ai_wording
 from backend.services.suggestions.evidence import load_evidence
-from backend.services.suggestions.fallback import _with_warnings, describe
+from backend.services.suggestions.fallback import describe
 from backend.services.suggestions.ranking import priority_band, rank
 from backend.services.suggestions.rules import collect_candidates
+from backend.services.suggestions.plain_language import summarize
 
 
 def _suggestion(candidate, score: float) -> dict:
     parts = describe(candidate)
     percent = max(0, min(100, round(100 * score)))
     return {
+        **summarize(candidate),
         "title": parts["title"],
         "affected_columns": [str(column) for column in candidate.columns if column],
         "explanation": parts["explanation"],
@@ -59,8 +61,9 @@ def _apply_ai(suggestions: list, candidates: dict, complete) -> bool:
     for suggestion in suggestions:
         new = reworded[suggestion["finding_id"]]
         suggestion["title"] = new["title"]
-        suggestion["explanation"] = _with_warnings(candidates[suggestion["finding_id"]], new["explanation"])
-        suggestion["next_steps"] = new["next_steps"]
+        # Statistical teaching and interpretation remain deterministic even when
+        # an optional model supplies the title and additional next steps.
+        suggestion["next_steps"] = list(dict.fromkeys([suggestion["next_steps"][0], *new["next_steps"]]))
     return True
 
 

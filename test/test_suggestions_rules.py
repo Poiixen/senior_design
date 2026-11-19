@@ -117,7 +117,7 @@ def test_outlier_box_reports_fields_the_profile_lacks():
         ],
     }
     visual = only(report).visual
-    assert visual.chart_type == "box_plot"
+    assert visual.chart_type == "evidence_table"
     assert set(visual.unavailable_fields) == {"min", "median", "max"}
 
 

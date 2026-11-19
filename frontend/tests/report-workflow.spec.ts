@@ -94,12 +94,15 @@ test("ranked cards expand in backend order and link to the saved evidence", asyn
   await expect(page.locator(".suggestion-card")).toHaveCount(5);
   await page.getByRole("button", { name: "View more findings" }).click();
   await expect(page.locator(".suggestion-card")).toHaveCount(7);
-  await expect(page.locator(".suggestion-card").first().getByText("AI-generated", { exact: true })).toBeVisible();
-  await expect(page.locator(".suggestion-card").last().getByText("Fallback guidance", { exact: true })).toBeVisible();
+  await page.locator(".suggestion-card").first().getByText("Statistical details", { exact: true }).click();
+  await expect(page.locator(".suggestion-card").first().getByText(/AI-assisted title/)).toBeVisible();
+  await page.locator(".suggestion-card").last().getByText("Statistical details", { exact: true }).click();
+  await expect(page.locator(".suggestion-card").last().getByText("Guidance from saved results.")).toBeVisible();
   const titles = await page.locator(".suggestion-card h3").allTextContents();
   expect(titles.map(t => t.match(/^Rank (\d+)/)![1])).toEqual(["1", "2", "3", "4", "5", "6", "7"]);
+  await page.locator(".finding-chart > summary").first().click();
   await expect(page.locator(".evidence-visual").first()).toBeVisible();
-  const link = page.getByRole("link", { name: /Inspect result #1/ }).first();
+  const link = page.getByRole("link", { name: /Open comparison #1/ }).first();
   await link.click();
   await expect(page.locator("#comparison-1")).toBeVisible();
   await expect(page.getByText(/^95% confidence interval for the mean difference/)).toBeVisible();
@@ -163,6 +166,7 @@ test("older reports and unknown visual specifications use factual fallbacks", as
   await page.route("**/api/reports/1/suggestions", route => route.fulfill({ json: { analysis_id: 1, source: "fallback", suggestions: [{ title: "Older evidence", explanation: "Only a count was saved.", affected_columns: [], evidence: ["4 rows"], next_steps: ["Review the source."], visual: { chart_type: "future_chart", title: "Saved count", data: { count: 4 }, warnings: [] } }] } }));
   await page.goto("/reports/1");
   await page.getByRole("button", { name: "Generate suggestions", exact: true }).click();
+  await page.locator(".finding-chart > summary").click();
   await expect(page.getByText(/Chart evidence is unavailable or this visual type/)).toBeVisible();
   await expect(page.locator(".evidence-visual table")).toContainText("4");
   await tab(page, "Columns").click();
@@ -231,6 +235,8 @@ test("all supporting visual kinds render backend values and evidence tables", as
   await page.route("**/api/reports/1/suggestions", route => route.fulfill({ json: { analysis_id: 1, source: "fallback", suggestions: specs.map((visual, i) => ({ finding_id: `visual-${i}`, title: visual.title, explanation: "Review the saved evidence.", affected_columns: [], evidence: [], next_steps: [], visual })) } }));
   await page.goto("/reports/1");
   await page.getByRole("button", { name: "Generate suggestions", exact: true }).click();
+  await expect(page.locator(".finding-chart")).toHaveCount(9);
+  for (const summary of await page.locator(".finding-chart > summary").all()) await summary.click();
   await expect(page.locator(".evidence-visual")).toHaveCount(9);
   await expect(page.locator(".histogram-chart svg")).toHaveCount(1);
   await expect(page.getByText("Included values: 18.", { exact: false })).toBeVisible();
