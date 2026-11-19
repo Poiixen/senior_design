@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { ApiError, getCurrentUser, logoutUser, type AuthUser } from "~/lib/api";
+import { isAuthenticationPath } from "~/lib/access";
 import { ACTIVITY_SYNC_MS, SESSION_IDLE_MS } from "~/lib/session";
 
 interface AccountState {
@@ -58,8 +59,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       }
       setUser(null); setLoading(false); setError("");
       const location = currentLocation.current;
-      if (location.pathname === "/showcase/report") navigate("/showcase", { replace: true });
-      if (["/dashboard", "/upload", "/reports", "/settings"].includes(location.pathname) || (location.pathname.startsWith("/reports/") && location.pathname !== "/reports/sample")) {
+      if (!isAuthenticationPath(location.pathname)) {
         navigate(`/login?next=${encodeURIComponent(location.pathname + location.search)}`, { replace: true });
       }
     };
@@ -108,7 +108,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     generation.current += 1;
     setLoading(false);
     setLoggingOut(true); setError("");
-    try { await logoutUser(); activityChannel.current?.postMessage({ type: "expired", userId: user?.id }); setUser(null); navigate("/"); }
+    try { await logoutUser(); activityChannel.current?.postMessage({ type: "expired", userId: user?.id }); setUser(null); navigate("/login"); }
     catch { setError("Unable to log out. Please try again."); }
     finally { setLoggingOut(false); }
   };

@@ -13,6 +13,15 @@ from fastapi.testclient import TestClient
 
 from backend.api.main import app, configure_database
 from backend.ingestion.adult_adapter import load_adult
+from backend.services import account_security
+
+@pytest.fixture(autouse=True)
+def verification_outbox(monkeypatch):
+    """Capture delivery only; real verification and access checks stay enabled."""
+    outbox = {}
+    monkeypatch.setattr(account_security, "send_verification_email", lambda email, code: outbox.update({email: code}))
+    monkeypatch.setattr(app.state, "test_outbox", outbox, raising=False)
+    return outbox
 
 DATA_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "data", "raw", "UCI_ADULT_INCOME")
@@ -40,13 +49,15 @@ def client(api_engine):
     return TestClient(app)
 
 
-def register_user(client, email="user@example.com", password="correct-horse"):
+def register_user(client, email="user@example.com", password="correct-horse-battery"):
     """Register an account; the client keeps the login cookie."""
     response = client.post(
         "/api/auth/register", json={"email": email, "password": password}
     )
     assert response.status_code == 201
-    return response.json()
+    verified = client.post("/api/auth/verify-email", json={"code": app.state.test_outbox[email.lower()]})
+    assert verified.status_code == 200
+    return verified.json()
 
 
 @pytest.fixture

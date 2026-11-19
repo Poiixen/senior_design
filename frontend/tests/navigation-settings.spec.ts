@@ -21,27 +21,9 @@ async function mockApi(page: Page, signedIn = true) {
   });
 }
 
-test("public examples stay outside the workspace and private URLs require sign-in", async ({ page }) => {
+test("every product URL requires sign-in and verified sessions can open examples", async ({ page }) => {
   await mockApi(page, false);
-  const workspaceRequests: string[] = [];
-  page.on("request", request => { if (/\/api\/(reports|analyze)/.test(request.url())) workspaceRequests.push(request.url()); });
-  await page.goto("/");
-  await expect(page.locator('a[href="/dashboard"], a[href="/upload"], a[href="/reports"], a[href="/settings"]')).toHaveCount(0);
-  await expect(page.getByRole("link", { name: /Try Demo/ })).toHaveAttribute("href", "/showcase");
-  await page.getByRole("link", { name: "View report", exact: true }).click();
-  await expect(page).toHaveURL(/\/example-report$/);
-  for (const name of ["Columns", "Missing values", "Duplicates", "Outliers", "Overview"]) {
-    await page.getByRole("navigation", { name: "Report views" }).getByRole("link", { name, exact: true }).click();
-    await expect(page).toHaveURL(/\/example-report(?:\?|$)/);
-    await expect(page.getByRole("complementary", { name: "Application navigation" })).toHaveCount(0);
-    await expect(page.locator('a[href="/dashboard"], a[href="/upload"], a[href="/reports"], a[href="/settings"]')).toHaveCount(0);
-  }
-  expect(workspaceRequests).toEqual([]);
-  await page.goto("/reports/sample?view=missing");
-  await expect(page).toHaveURL(/\/example-report\?view=missing$/);
-  await page.goto("/documentation");
-  await expect(page.getByRole("navigation", { name: "Public navigation" })).toBeVisible();
-  for (const path of ["/dashboard", "/upload", "/reports", "/reports/1", "/settings"]) {
+  for (const path of ["/", "/showcase", "/example-report", "/documentation", "/dashboard", "/upload", "/reports", "/reports/1", "/settings"]) {
     await page.goto(path);
     await expect(page).toHaveURL(/\/login\?next=/);
     await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
@@ -55,12 +37,13 @@ test("public examples stay outside the workspace and private URLs require sign-i
   await expect(page.locator(".desktop-sidebar")).toBeVisible();
   await page.goto("/example-report");
   await expect(page.getByRole("navigation", { name: "Public navigation" })).toBeVisible();
-  await expect(page.locator(".desktop-sidebar")).toHaveCount(0);
-  await page.screenshot({ path: "../.run/public-example-report.png", fullPage: true });
+  for (const name of ["Columns", "Missing values", "Duplicates", "Outliers", "Overview"]) {
+    await page.getByRole("navigation", { name: "Report views" }).getByRole("link", { name, exact: true }).click();
+    await expect(page).toHaveURL(/\/example-report(?:\?|$)/);
+  }
   await page.setViewportSize({ width: 390, height: 844 });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
-
 test("workspace palettes change surfaces in both modes, persist, synchronize, and reset", async ({ page, context }) => {
   await mockApi(page); await page.goto("/settings");
   const palette = page.getByRole("group", { name: "Workspace palette", exact: true });
@@ -96,10 +79,9 @@ test("workspace palettes change surfaces in both modes, persist, synchronize, an
   await second.close();
 });
 
-test("public homepage stays general and Sign in reopens an existing product session", async ({ page }) => {
+test("login reopens existing sessions and logout returns to the login gate", async ({ page }) => {
   await mockApi(page, false);
-  await page.goto("/");
-  await page.getByRole("link", { name: "Sign in", exact: true }).click();
+  await page.goto("/login");
   await page.getByLabel("Email", { exact: true }).fill(user.email);
   await page.getByLabel("Password", { exact: true }).fill("test-only-password");
   await page.getByRole("button", { name: "Log in", exact: true }).click();
@@ -116,8 +98,8 @@ test("public homepage stays general and Sign in reopens an existing product sess
   await page.goto("/login?next=/reports");
   await expect(page).toHaveURL(/\/reports$/);
   await page.locator(".desktop-sidebar").getByRole("button", { name: "Log out", exact: true }).click();
-  await expect(page).toHaveURL("http://127.0.0.1:5186/");
-  await expect(page.getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
+  await expect(page).toHaveURL("http://127.0.0.1:5186/login");
+  await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
 });
 
 test("sidebar collapse persists, resizes content, and preserves accessible account navigation", async ({ page }) => {
@@ -193,7 +175,7 @@ test("density, motion, default sorting, per-view sorting and confirmed reset wor
 test("unauthenticated settings redirect and invalid stored preferences fall back safely", async ({ page }) => {
   await mockApi(page, false);
   await page.addInitScript(key => localStorage.setItem(key, '{"theme":"unknown","reportSort":"__proto__","sidebarCollapsed":"yes"}'), key);
-  await page.goto("/settings"); await expect(page).toHaveURL(/\/login\?next=\/settings$/);
+  await page.goto("/settings"); await expect(page).toHaveURL(/\/login\?next=%2Fsettings$/);
   await expect(page.locator("html")).toHaveAttribute("data-density", "comfortable");
 });
 
@@ -229,29 +211,25 @@ test("documentation retains the signed-in account across navigation and reload",
   await expect(header.getByRole("link", { name: "Back to workspace", exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await header.getByRole("button", { name: "Log out", exact: true }).click();
-  await expect(page).toHaveURL("http://127.0.0.1:5186/");
+  await expect(page).toHaveURL("http://127.0.0.1:5186/login");
   expect(logouts).toHaveLength(1);
   await page.goto("/documentation");
-  await expect(header.getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
   await expect(header.getByRole("link", { name: "Back to workspace", exact: true })).toHaveCount(0);
 });
 
-test("workspace verification failures hide navigation and allow retry", async ({ page }) => {
+test("verification failures hide product content and allow retry", async ({ page }) => {
   await mockApi(page); await page.goto("/dashboard");
   await expect(page.locator(".desktop-sidebar .sidebar-user")).toBeVisible();
   await page.route("**/api/auth/me", route => route.fulfill({ status: 503, json: { detail: "Temporarily unavailable" } }));
   await page.locator(".desktop-sidebar").getByRole("link", { name: "Documentation", exact: true }).click();
-  await expect(page.getByRole("navigation", { name: "Public navigation" })).toBeVisible();
-  await expect(page.getByRole("link", { name: `Account settings for ${user.email}`, exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Retry account" })).toBeVisible();
-  await expect(page.getByRole("complementary", { name: "Application navigation" })).toHaveCount(0);
-  await page.goto("/settings"); await expect(page.getByRole("heading", { name: "Unable to verify workspace access" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Unable to verify access" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Public navigation" })).toHaveCount(0);
   await expect(page.getByRole("complementary", { name: "Application navigation" })).toHaveCount(0);
   await page.unroute("**/api/auth/me");
   await page.getByRole("button", { name: "Try again", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Public navigation" })).toBeVisible();
 });
-
 test("five minutes without interaction expires the product session without background renewal", async ({ page }) => {
   await page.clock.install();
   await mockApi(page);

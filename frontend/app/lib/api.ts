@@ -23,6 +23,8 @@ export class ApiError extends Error {
 const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
 
 export interface AuthUser { id: number; email: string }
+export interface PendingVerification { verification_required: true }
+export type AuthResult = AuthUser | PendingVerification;
 
 export interface ComparisonMethod {
   key: string;
@@ -251,7 +253,7 @@ export async function getReports(signal?: AbortSignal, origin?: string): Promise
   return body.reports as ReportSummary[];
 }
 
-async function authRequest(path: string, init?: RequestInit): Promise<AuthUser | null> {
+async function authRequest(path: string, init?: RequestInit): Promise<AuthResult | null> {
   let response: Response;
   try {
     response = await fetch(`${apiBase}/api/auth/${path}`, { credentials: "include", ...init });
@@ -261,6 +263,7 @@ async function authRequest(path: string, init?: RequestInit): Promise<AuthUser |
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) throw new ApiError(detailMessage(body) ?? "The account request could not be completed.", response.status);
   if (path === "logout") return null;
+  if (body && typeof body === "object" && "verification_required" in body && body.verification_required === true) return body as PendingVerification;
   if (!body || typeof body !== "object" || !("id" in body) || !("email" in body) ||
       typeof body.id !== "number" || typeof body.email !== "string") {
     throw new ApiError("The authentication service returned an invalid response.", response.status);
@@ -274,7 +277,9 @@ const jsonRequest = (email: string, password: string): RequestInit => ({
   body: JSON.stringify({ email, password }),
 });
 
-export function registerUser(email: string, password: string) { return authRequest("register", jsonRequest(email, password)) as Promise<AuthUser>; }
-export function loginUser(email: string, password: string) { return authRequest("login", jsonRequest(email, password)) as Promise<AuthUser>; }
+export function registerUser(email: string, password: string) { return authRequest("register", jsonRequest(email, password)) as Promise<AuthResult>; }
+export function loginUser(email: string, password: string) { return authRequest("login", jsonRequest(email, password)) as Promise<AuthResult>; }
+export function verifyEmail(code: string) { return authRequest("verify-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) }) as Promise<AuthUser>; }
+export function resendVerification() { return authRequest("resend-verification", { method: "POST" }); }
 export function logoutUser() { return authRequest("logout", { method: "POST" }); }
 export function getCurrentUser() { return authRequest("me") as Promise<AuthUser>; }

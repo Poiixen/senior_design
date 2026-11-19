@@ -17,49 +17,54 @@ function renderReport(report, path = "/reports/7") {
   return renderToStaticMarkup(createElement(RouterProvider, { router }));
 }
 
-test("the default route serves the public homepage without blocking on authentication", async () => {
+test("all product pages redirect before returning HTML to anonymous visitors", async () => {
   const build = await import("../frontend/build/server/index.js");
-  const response = await createRequestHandler(build, "production")(new Request("http://localhost/"));
+  const handle = createRequestHandler(build, "production");
+  for (const path of ["/", "/showcase", "/showcase/report", "/example-report", "/documentation", "/dashboard", "/upload", "/reports", "/reports/1", "/settings"]) {
+    const response = await handle(new Request(`http://localhost${path}`));
+    assert.equal(response.status, 302, path);
+    assert.equal(response.headers.get("Location"), `/login?next=${encodeURIComponent(path)}`);
+    assert.equal(response.headers.get("Cache-Control"), "no-store");
+    assert.doesNotMatch(await response.text(), /Turn messy datasets|Application navigation|ILLUSTRATIVE SAMPLE/);
+  }
+});
+
+test("login, registration and verification remain reachable without a session", async () => {
+  const build = await import("../frontend/build/server/index.js");
+  const handle = createRequestHandler(build, "production");
+  for (const path of ["/login", "/register", "/verify-email"]) {
+    const response = await handle(new Request(`http://localhost${path}`));
+    assert.equal(response.status, 200, path);
+    assert.equal(response.headers.get("Cache-Control"), "no-store");
+  }
+});
+
+test("server gate verifies cookies with fixed API origin and fails closed", async (t) => {
+  const build = await import("../frontend/build/server/index.js");
+  const handle = createRequestHandler(build, "production");
+  let status = 401;
+  let requested;
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    requested = { url: String(url), options };
+    return new Response(JSON.stringify({ id: 1, email: "verified@example.com" }), {
+      status, headers: { "Content-Type": "application/json", "Set-Cookie": "session=renewed; HttpOnly" },
+    });
+  });
+  const request = () => new Request("http://untrusted-host.example/documentation", { headers: { Cookie: "session=opaque" } });
+  let response = await handle(request());
+  assert.equal(response.status, 302);
+  assert.equal(requested.url, `${process.env.API_INTERNAL_URL || "http://127.0.0.1:8000"}/api/auth/me`);
+  assert.equal(requested.options.headers.Cookie, "session=opaque");
+  status = 503;
+  response = await handle(request());
+  assert.equal(response.status, 503);
+  assert.doesNotMatch(await response.text(), /Public navigation|Application navigation/);
+  status = 200;
+  response = await handle(request());
   assert.equal(response.status, 200);
-  assert.equal(response.headers.get("Location"), null);
-  const html = await response.text();
-  assert.match(html, /Turn messy datasets/);
-  assert.match(html, /Sign in/);
-  assert.doesNotMatch(html, /My account|Log out/);
-  assert.match(html, /ILLUSTRATIVE SAMPLE/);
-  assert.match(html, /href="\/example-report"/);
-  assert.doesNotMatch(html, /class="sidebar"/);
-  assert.doesNotMatch(html, /href="\/(?:dashboard|upload|reports|settings)(?:[/?"])/);
-  assert.equal(build.assets.routes["routes/home"].hasClientLoader, false);
-  assert.ok(routes["routes/dashboard"]);
-  assert.ok(routes["routes/upload"]);
+  assert.equal(response.headers.get("Set-Cookie"), "session=renewed; HttpOnly");
+  assert.equal(response.headers.get("Cache-Control"), "no-store");
 });
-
-test("public example and documentation render without workspace navigation", async () => {
-  const build = await import("../frontend/build/server/index.js");
-  const handle = createRequestHandler(build, "production");
-  for (const path of ["/example-report", "/example-report?view=columns", "/documentation"]) {
-    const response = await handle(new Request(`http://localhost${path}`));
-    assert.equal(response.status, 200);
-    const html = await response.text();
-    assert.match(html, /Public navigation/);
-    assert.doesNotMatch(html, /Application navigation|href="\/(?:dashboard|upload|reports|settings)(?:[/?"])/);
-  }
-  const legacy = await handle(new Request("http://localhost/reports/sample?view=missing"));
-  assert.equal(legacy.headers.get("Location"), "/example-report?view=missing");
-});
-
-test("workspace HTML waits for session verification before rendering navigation", async () => {
-  const build = await import("../frontend/build/server/index.js");
-  const handle = createRequestHandler(build, "production");
-  for (const path of ["/dashboard", "/upload", "/reports", "/reports/1", "/settings"]) {
-    const response = await handle(new Request(`http://localhost${path}`));
-    const html = await response.text();
-    assert.match(html, /Checking your session/);
-    assert.doesNotMatch(html, /Application navigation|class="workspace"/);
-  }
-});
-
 test("analysis overview renders actual metrics and findings without inventing a quality score", () => {
   const html = renderReport({ ...sampleReport, filename: "my-real-dataset.xlsx", analysis_id: 7 });
   assert.match(html, /my-real-dataset.xlsx/);

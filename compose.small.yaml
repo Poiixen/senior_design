@@ -14,7 +14,12 @@ services:
       DATABASE_PATH: /data/analysis.sqlite3
       DATASET_STORAGE_DIR: /data/datasets
       CORS_ALLOWED_ORIGINS: https://${DOMAIN:?Set DOMAIN}
-      SHOWCASE_ENABLED: "true"
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURITY: ${SMTP_SECURITY:-starttls}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       PUBLIC_RATE_LIMITS: "true"
       MAX_UPLOAD_SIZE: "1048576"
       OPENBLAS_NUM_THREADS: "1"
@@ -39,6 +44,7 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: "3000"
+      API_INTERNAL_URL: http://api:8000
       NODE_OPTIONS: --max-old-space-size=64
     mem_limit: 96m
     memswap_limit: 192m

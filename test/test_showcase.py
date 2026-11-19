@@ -21,37 +21,18 @@ def test_seed_idempotent_and_repair_missing_parquet(client):
     assert len(service.list_comparisons(first, user.id)) == 2
 
 
-def test_demo_access_and_deterministic_suggestions(client, monkeypatch):
+def test_demo_login_cannot_bypass_verification(client, monkeypatch):
     monkeypatch.setenv("SHOWCASE_ENABLED", "true")
     analysis_id = seed_showcase(app.state.analysis_service)
-    result = client.post("/api/auth/demo")
-    assert result.status_code == 200
-    assert result.json()["analysis_id"] == analysis_id
-    assert client.get(f"/api/reports/{analysis_id}").status_code == 200
-    assert len(client.get(f"/api/reports/{analysis_id}/comparisons").json()["comparisons"]) == 2
-    def forbidden_ai(*args):
-        raise AssertionError("Demo must not contact AI")
-    monkeypatch.setattr(app.state, "suggestion_complete", forbidden_ai, raising=False)
-    response = client.post(f"/api/reports/{analysis_id}/suggestions", json={"limit": 20})
-    assert response.status_code == 200
-    assert response.json()["source"] == "fallback"
-    assert response.json()["suggestions"]
-    for path, method, body in [
-        ("/api/analyze", "post", None),
-        (f"/api/reports/{analysis_id}/comparisons", "post", {"comparison_type": "categorical_numeric", "group_column": "workshop", "value_column": "minutes"}),
-        (f"/api/reports/{analysis_id}/column-names", "patch", {"column_display_names": {"minutes": "changed"}}),
-        (f"/api/reports/{analysis_id}/conversations", "post", None),
-        (f"/api/reports/{analysis_id}/questions", "post", {"question": "Hello"}),
-    ]:
-        assert getattr(client, method)(path, json=body).status_code == 403
-    client.post("/api/auth/logout")
-    client.post("/api/auth/register", json={"email": "visitor@example.org", "password": "visitor-password"})
+    assert client.post("/api/auth/demo").status_code == 403
+    assert client.get(f"/api/reports/{analysis_id}").status_code == 401
+    from conftest import register_user
+    register_user(client, email="visitor@example.org")
     assert client.get(f"/api/reports/{analysis_id}").status_code == 404
-
 
 def test_demo_disabled_and_reserved_identity(client, monkeypatch):
     monkeypatch.delenv("SHOWCASE_ENABLED", raising=False)
-    assert client.post("/api/auth/demo").status_code == 503
+    assert client.post("/api/auth/demo").status_code == 403
     assert client.post("/api/auth/register", json={"email": EMAIL, "password": "some-password"}).status_code == 400
 
 

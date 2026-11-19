@@ -1,53 +1,60 @@
 import { test, expect } from "@playwright/test";
-import { readFileSync } from "node:fs";
-
-
-const { report, suggestions } = JSON.parse(readFileSync(new URL("../../docs/examples/showcase.json", import.meta.url), "utf8"));
 
 for (const width of [320, 375, 390, 768, 1440]) {
-  test(`showcase entry, chart, refresh and layout at ${width}px`, async ({ page }, info) => {
+  test(`verification gate and mobile layout at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
-    let signedIn = false;
-    await page.route("**/api/**", route => {
+    let verified = false;
+    await page.route("**/api/**", async route => {
       const path = new URL(route.request().url()).pathname;
-      if (path === "/api/auth/demo") { signedIn = true; return route.fulfill({ json: { analysis_id: 1 } }); }
-      if (path === "/api/auth/me") return route.fulfill(signedIn ? { json: { id: 1, email: "showcase@demo.invalid" } } : { status: 401, json: { detail: "Not authenticated" } });
-      if (path === "/api/reports") return route.fulfill({ json: { reports: [{ analysis_id: 1 }] } });
-      if (path === "/api/reports/1") return route.fulfill({ json: { ...report, analysis_id: 1 } });
-      if (path.endsWith("/suggestions")) return route.fulfill({ json: suggestions });
+      if (path === "/api/auth/register" || path === "/api/auth/resend-verification") return route.fulfill({ json: { verification_required: true } });
+      if (path === "/api/auth/verify-email") {
+        if (route.request().postDataJSON().code !== "12345678") return route.fulfill({ status: 400, json: { detail: "Invalid or expired code." } });
+        verified = true;
+        return route.fulfill({ json: { id: 1, email: "verified@example.com" } });
+      }
+      if (path === "/api/auth/me") return route.fulfill(verified ? { json: { id: 1, email: "verified@example.com" } } : { status: 401, json: { detail: "Not authenticated" } });
+      if (path === "/api/reports") return route.fulfill({ json: { reports: [] } });
       return route.fulfill({ status: 404, json: {} });
     });
-    await page.goto("/showcase");
-    await page.getByRole("button", { name: "Try Demo" }).click();
-    await expect(page).toHaveURL(/\/showcase\/report$/);
-    await expect(page.getByRole("heading", { name: "A closer look at workshop attendance" })).toBeVisible();
-    await page.getByRole("link", { name: "Compare two columns", exact: true }).click();
-    await page.locator("#comparisons summary").first().click();
-    await expect(page.locator("#comparisons figure").first()).toBeVisible();
-    const firstComparison = page.locator("#comparisons > details").first();
-    const technical = firstComparison.locator(".finding-statistics");
-    await expect(technical).not.toHaveAttribute("open", "");
-    await expect(firstComparison.getByText(/Holm's method/)).not.toBeVisible();
-    await technical.getByText("Statistical details", { exact: true }).click();
-    await expect(firstComparison.getByText(/Holm's method/)).toBeVisible();
-    await technical.getByText("Statistical details", { exact: true }).click();
-    await expect(page.locator("#suggestions > article")).toHaveCount(Math.min(3, suggestions.suggestions.filter((s: { finding_type: string }) => !["group_difference", "categorical_association"].includes(s.finding_type)).length));
-    await expect(page.locator("#suggestions .finding-chart").first()).not.toHaveAttribute("open", "");
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await page.screenshot({ path: info.outputPath(`showcase-${width}.png`), fullPage: true });
-    await page.reload();
-    await expect(page.getByRole("heading", { name: "Read suggestions", exact: true })).toBeVisible();
-    signedIn = false;
-    await page.reload();
-    await expect(page).toHaveURL(/\/showcase$/);
+    for (const path of ["/", "/showcase", "/showcase/report", "/example-report", "/documentation", "/reports/1"]) {
+      await page.goto(path);
+      await expect(page).toHaveURL(/\/login\?next=/);
+      await expect(page.getByRole("heading", { name: "Log in", exact: true })).toBeVisible();
+      await expect(page.getByRole("complementary", { name: "Application navigation" })).toHaveCount(0);
+    }
+    await page.getByRole("link", { name: "Create an account" }).click();
+    await expect(page.getByRole("heading", { name: "Register", exact: true })).toBeVisible();
+    await page.getByLabel("Email", { exact: true }).fill("verified@example.com");
+    await page.getByLabel("Password", { exact: true }).fill("a-long-test-password");
+    await page.getByLabel("Confirm password", { exact: true }).fill("a-long-test-password");
+    await page.getByRole("button", { name: "Create account", exact: true }).click();
+    await expect(page).toHaveURL(/\/verify-email$/);
+    await expect(page.getByRole("heading", { name: "Verify your email" })).toBeVisible();
+    await page.getByLabel("Verification code").fill("00000000");
+    await page.getByRole("button", { name: "Verify email", exact: true }).click();
+    await expect(page.getByRole("alert")).toContainText("Invalid or expired");
+    await page.getByRole("button", { name: "Resend code" }).click();
+    await expect(page.getByRole("status")).toContainText("A new code has been sent");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: info.outputPath(`verification-${width}.png`), fullPage: true });
+    await page.getByLabel("Verification code").fill("12345678");
+    await page.getByRole("button", { name: "Verify email", exact: true }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole("heading", { name: "Good data. Better questions.", exact: true })).toBeVisible();
   });
 }
 
-test("demo entry failure offers retry and offline sample", async ({ page }) => {
-  await page.route("**/api/**", route => route.fulfill({ status: 503, json: { detail: "Demo is being prepared." } }));
-  await page.goto("/showcase");
-  await page.getByRole("button", { name: "Try Demo" }).click();
-  await expect(page.getByRole("alert")).toContainText("Demo is being prepared");
-  await expect(page.getByRole("link", { name: "view the offline sample" })).toBeVisible();
+test("email delivery failure stays outside the app and supports retry", async ({ page }) => {
+  await page.route("**/api/**", route => {
+    if (route.request().url().endsWith("/me")) return route.fulfill({ status: 401, json: { detail: "Not authenticated" } });
+    return route.fulfill({ status: 503, json: { detail: "Verification email could not be sent." } });
+  });
+  await page.goto("/login");
+  await page.getByLabel("Email", { exact: true }).fill("verified@example.com");
+  await page.getByLabel("Password", { exact: true }).fill("a-long-test-password");
+  await page.getByRole("button", { name: "Log in", exact: true }).click();
+  await expect(page).toHaveURL(/\/verify-email\?delivery=failed/);
+  await expect(page.getByRole("alert")).toContainText("couldn't send");
+  await expect(page.getByRole("button", { name: "Resend code" })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Application navigation" })).toHaveCount(0);
 });

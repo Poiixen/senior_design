@@ -20,8 +20,14 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const password = String(data.get("password") ?? "");
   if (!email || !password) return { error: "Email and password are required." };
   const destination = loginDestination(request.url);
-  try { await loginUser(email, password); return redirect(destination); }
-  catch (error) { return { error: error instanceof Error ? error.message : "Unable to log in." }; }
+  try {
+    const result = await loginUser(email, password);
+    return redirect("verification_required" in result ? `/verify-email?next=${encodeURIComponent(destination)}` : destination);
+  }
+  catch (error) {
+    if (error instanceof ApiError && error.status === 503) return redirect(`/verify-email?delivery=failed&next=${encodeURIComponent(destination)}`);
+    return { error: error instanceof Error ? error.message : "Unable to log in." };
+  }
 }
 export default function Login({ actionData, loaderData }: Route.ComponentProps) {
   const busy = useNavigation().state !== "idle";

@@ -10,6 +10,7 @@ export default [
     route("documentation", "routes/documentation.tsx"),
     route("login", "routes/login.tsx"),
     route("register", "routes/register.tsx"),
+    route("verify-email", "routes/verify-email.tsx"),
   ]),
   layout("routes/workspace.tsx", [
     route("dashboard", "routes/dashboard.tsx"),
