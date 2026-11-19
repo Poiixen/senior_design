@@ -19,6 +19,54 @@ from backend.services.suggestions.rules import holm_adjust
 from test_suggestions_rules import example, findings, only
 
 
+def test_adjusted_decision_displays_adjusted_value_and_family():
+    first = example("categorical_numeric_two_groups_welch")
+    second = example("categorical_numeric_three_plus_groups_kruskal_wallis")
+    for index, comparison in enumerate((first, second), 1):
+        comparison["comparison_id"] = index
+        comparison["test"]["p_value"] = 0.03
+    for candidate, _ in findings(comparisons=[first, second]):
+        parts = describe(candidate)
+        assert "(0.060) is not below 0.05" in parts["explanation"]
+        assert "selected saved comparisons only" in parts["explanation"]
+        assert "Raw p 0.030; Holm-adjusted p 0.060" in " ".join(parts["evidence"])
+        assert "2 distinct selected saved comparisons" in " ".join(parts["evidence"])
+
+
+def test_zero_iqr_explains_flags_and_missing_chart():
+    candidate = only({"dataset": {"rows": 100}, "outliers": [{
+        "column_name": "capital-gain", "outlier_count": 10, "outlier_percentage": 10,
+        "q1": 0, "q3": 0, "iqr": 0, "lower_bound": 0, "upper_bound": 0,
+    }]}, kind="outliers")
+    parts = describe(candidate)
+    assert "every positive value exceeds the zero upper fence" in parts["explanation"]
+    assert "Q1 - 1.5" in parts["explanation"]
+    assert "does not establish errors" in parts["explanation"]
+    assert "Use the chart" not in " ".join(parts["next_steps"])
+    assert parts["next_steps"][0].startswith("No chart is available")
+
+
+def test_cramers_v_and_expected_count_warning_explain_limits():
+    candidate = only(comparisons=[example("categorical_categorical_warning")])
+    text = describe(candidate)["explanation"]
+    assert "p-value unreliable" in text
+    assert "changes the hypothesis tested" in text
+    assert "strongest possible association for the table" in text
+    assert "neither direction nor causality" in text
+
+
+@pytest.mark.parametrize("value", [0, 1e-200, 0.000999])
+def test_tiny_p_values_are_thresholds_without_changing_evidence(value):
+    comparison = example("categorical_numeric_two_groups_welch")
+    comparison["test"]["p_value"] = value
+    candidate = only(comparisons=[comparison])
+    assert candidate.values["p_value"] == value
+    parts = describe(candidate)
+    assert "< 0.001" in parts["explanation"]
+    assert "half-SD difference" in parts["explanation"]
+    assert "0.00e+00" not in str(parts)
+
+
 # --- formatting and labels ---------------------------------------------------
 
 

@@ -104,3 +104,28 @@ can be set with `SUGGESTIONS_AI_MODEL`.
   `whisker_low`/`whisker_high`/`outlier_count`. ANOVA also returns
   `degrees_of_freedom_within`, which the explanation text does not print yet.
   Reports without these fields produce no such findings.
+# Reviewer guidance (showcase)
+
+Significance uses Holm-adjusted values when a family of distinct selected saved
+comparisons is corrected. Display raw and adjusted p-values and the family count;
+do not imply correction of every analysis. Holm adjusts multiple p-values to
+reduce false positives. Tiny p-values display as `p < 0.001`; API numbers retain
+their precision. Statistical significance does not establish practical importance.
+
+Cohen's d expresses two means' difference in pooled standard deviation units:
+0.50 is half an SD. Cramer's V describes categorical association from zero to the
+strongest possible association for that table; it has no causal or directional
+interpretation. Benchmark labels are context-dependent magnitude conventions.
+
+IQR is Q3−Q1. Values outside Q1−1.5×IQR to Q3+1.5×IQR are review flags, not errors.
+With Q1=Q3=0, all positive values exceed a zero upper fence. Concentrated and
+discrete distributions can produce many flags. Examine nonzero values separately.
+No percentile replacement is recommended: if explored later, the 1st and 99th
+percentiles are the values at/below which approximately 1% and 99% of observations
+fall. That is a separate optional exploratory rule, not an objectively better one.
+
+Low expected counts can make chi-square p-values unreliable. Combining meaningful
+rare categories may improve expected counts while changing the tested hypothesis.
+Show these caveats before interpretation and link each recommendation to its named
+saved visual or explicit evidence-table fallback. Statistical explanations remain
+deterministic even when optional AI supplies titles and additional next steps.

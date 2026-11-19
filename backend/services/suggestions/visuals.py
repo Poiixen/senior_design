@@ -82,13 +82,14 @@ def outlier_box(column: str, source: EvidenceRef, outlier: dict, profile: Option
         data[key] = value
         if value is None:
             missing_fields.append(key)
-    if data["q1"] is None or data["q3"] is None:
+    if any(data.get(key) is None for key in ("q1", "q3", "median")):
         return evidence_table(
             f"Outlier bounds for {column}",
             source,
             [{"label": key, "value": outlier.get(key)} for key in ("outlier_count", "lower_bound", "upper_bound")],
-            "The saved outlier result has no quartiles to draw.",
-            unavailable_fields=["q1", "q3"],
+            "The saved outlier result lacks quartiles or a median needed to draw a box plot.",
+            unavailable_fields=list(dict.fromkeys([*missing_fields,
+                *[key for key in ("q1", "q3") if data.get(key) is None]])),
         )
     return VisualSpec(
         chart_type="box_plot",

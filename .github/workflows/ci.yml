@@ -5,7 +5,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, production]
 
 # A new push to the same branch supersedes an in-flight run.
 concurrency:
@@ -71,3 +71,18 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Install browser for mobile smoke tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Showcase mobile smoke tests
+        env:
+          PLAYWRIGHT_CHANNEL: chromium
+        run: npx playwright test tests/showcase.spec.ts
+
+      - name: Save browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: showcase-browser-evidence
+          path: .run/playwright-results

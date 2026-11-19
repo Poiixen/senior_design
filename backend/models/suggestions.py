@@ -92,6 +92,9 @@ class VisualSpec(_FiniteModel):
 
 
 class Suggestion(_FiniteModel):
+    plain_summary: Optional[str] = None
+    recommended_action: Optional[str] = None
+    plain_caution: Optional[str] = None
     # Required by the existing frontend contract.
     title: str
     affected_columns: list[str]

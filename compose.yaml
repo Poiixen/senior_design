@@ -1,0 +1,62 @@
+name: team-science
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?Set a persistent random SECRET_KEY}
+      SESSION_COOKIE_SECURE: "true"
+      DATABASE_PATH: /data/analysis.sqlite3
+      DATASET_STORAGE_DIR: /data/datasets
+      CORS_ALLOWED_ORIGINS: https://${DOMAIN:?Set DOMAIN}
+      SHOWCASE_ENABLED: "true"
+      PUBLIC_RATE_LIMITS: "true"
+      MAX_UPLOAD_SIZE: "10485760"
+    volumes:
+      - app-data:/data
+    mem_limit: 2g
+    cpus: 1.5
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: *logging
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3000"
+    mem_limit: 512m
+    logging: *logging
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN}
+      WWW_DOMAIN: www.${DOMAIN:?Set the bare domain without www}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    logging: *logging
+volumes:
+  app-data:
+  caddy-data:
+  caddy-config:

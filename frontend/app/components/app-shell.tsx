@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation, useNavigation } from "react-router";
 import { useAccount } from "./account-provider";
 import { usePreferences } from "./preferences-provider";
@@ -29,6 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => { document.body.style.overflow = previous; };
   }, [mobileOpen]);
 
+  if (pathname.startsWith("/showcase")) return <><a className="skip-link" href="#showcase-content">Skip to content</a>{children}</>;
   if (pathname === "/") return <><a className="skip-link" href="#main-content">Skip to content</a>{children}</>;
   if (isAuthPage) return <div className="auth-layout">
     {navigation.state === "loading" && <div className="route-progress auth-route-progress" role="status" aria-label="Loading page" />}

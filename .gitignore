@@ -32,6 +32,9 @@ node_modules/
 
 # Local development process state
 .run/
+.env
+.env.*
+!.env.example
 
 # Stray PowerShell module analysis cache (sometimes created at cwd root)
 Microsoft/

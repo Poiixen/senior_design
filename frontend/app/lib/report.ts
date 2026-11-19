@@ -276,3 +276,7 @@ export function compareMeasurements(
   if (!secondAvailable) return -1;
   return direction === "ascending" ? first - second : second - first;
 }
+
+export function formatPValue(value: number | null | undefined): string {
+  return value != null && Number.isFinite(value) && value < 0.001 ? "p < 0.001" : formatNumber(value);
+}

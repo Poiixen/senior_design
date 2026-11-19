@@ -4,7 +4,7 @@ The signed session cookie stores the user's ID and last authenticated activity.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from math import isfinite
 from time import time
@@ -13,6 +13,9 @@ from backend.database import repository
 from backend.database.connection import session_scope
 from backend.models import User
 from backend.services import auth_service
+from backend.services.showcase import EMAIL, is_demo_user, showcase_report
+import os
+import re
 
 MIN_PASSWORD_LENGTH = 8
 SESSION_IDLE_SECONDS = 5 * 60
@@ -21,8 +24,8 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 class Credentials(BaseModel):
-    email: str = ""
-    password: str = ""
+    email: str = Field(default="", max_length=254)
+    password: str = Field(default="", max_length=1024)
 
 
 def _public_user(user: User) -> dict:
@@ -48,6 +51,9 @@ def get_current_user(request: Request) -> User:
     if user is None:
         request.session.clear()
         raise HTTPException(status_code=401, detail="Not authenticated.")
+    if is_demo_user(request.app.state.engine, user.id) and request.method not in ("GET", "HEAD"):
+        if not re.fullmatch(r"/api/reports/\d+/suggestions", request.url.path):
+            raise HTTPException(status_code=403, detail="The showcase is read-only. Create your own account to upload, compare, or chat.")
     request.session["last_activity"] = now
     return user
 
@@ -55,6 +61,8 @@ def get_current_user(request: Request) -> User:
 @router.post("/register", status_code=201)
 def register(credentials: Credentials, request: Request) -> dict:
     email = auth_service.normalize_email(credentials.email)
+    if email == EMAIL:
+        raise HTTPException(status_code=400, detail="This address is reserved for the showcase.")
     if not email or "@" not in email:
         raise HTTPException(status_code=400, detail="A valid email is required.")
     if len(credentials.password) < MIN_PASSWORD_LENGTH:
@@ -101,6 +109,19 @@ def login(credentials: Credentials, request: Request) -> dict:
 def logout(request: Request) -> dict:
     request.session.clear()
     return {"status": "logged_out"}
+
+
+@router.post("/demo")
+def demo(request: Request) -> dict:
+    if os.getenv("SHOWCASE_ENABLED", "").lower() != "true":
+        raise HTTPException(status_code=503, detail="Demo is unavailable. Explore the sample report or try again later.")
+    result = showcase_report(request.app.state.analysis_service)
+    if result is None:
+        raise HTTPException(status_code=503, detail="Demo is being prepared. Please try again later.")
+    user, analysis_id = result
+    request.session.clear()
+    request.session.update(user_id=user.id, last_activity=time())
+    return {"user": _public_user(user), "analysis_id": analysis_id}
 
 
 @router.get("/me")
