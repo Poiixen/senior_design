@@ -1,5 +1,10 @@
 # Deploy on the existing 512 MB Droplet
 
+**Access policy update:** rebuild both application images and configure SMTP
+using [security setup](security.md) before rollout. Shared demo login is disabled;
+all product pages require a verified account. Existing deployment archives and
+anonymous-showcase instructions below predate this change.
+
 This is a trial configuration for light showcase traffic on a 1 CPU / 512 MB RAM /
 10 GB disk Droplet with 1 GB swap. It is not a capacity guarantee. Build on Windows,
 then transfer images; do not build on the server. Heavy analyses and simultaneous

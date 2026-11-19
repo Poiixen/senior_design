@@ -75,7 +75,7 @@ jobs:
       - name: Install browser for mobile smoke tests
         run: npx playwright install --with-deps chromium
 
-      - name: Showcase mobile smoke tests
+      - name: Verified access and mobile smoke tests
         env:
           PLAYWRIGHT_CHANNEL: chromium
         run: npx playwright test tests/showcase.spec.ts
@@ -84,5 +84,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: showcase-browser-evidence
+          name: verified-access-browser-evidence
           path: .run/playwright-results

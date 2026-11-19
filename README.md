@@ -2,8 +2,10 @@
 
 Showcase setup: [DigitalOcean deployment guide](docs/deployment.md).
 Implementation details and remaining release checks: [tickets 64–67 change log](docs/showcase-changes.md).
-Visitors enter at `/showcase`; prepare the read-only dataset with
-`python -m scripts.seed_showcase` and enable `SHOWCASE_ENABLED=true` on the API.
+All product pages now require login and confirmed email ownership. The old shared
+demo login is disabled. Configure verification email delivery before deploying;
+see [verified access and security setup](docs/security.md). Existing accounts must
+verify on their next login. New passwords require at least 15 characters.
 
 Dataset-agnostic data quality pipeline. Takes a tabular dataset, validates its
 structure, profiles the columns, runs diagnostics for missing values,

@@ -1,5 +1,10 @@
 # Showcase deployment: DigitalOcean + Docker Compose
 
+**Access policy update:** shared demo login is disabled. All product pages now
+require a verified account. Configure SMTP using [security setup](security.md)
+before rollout; the older showcase walkthrough below is historical where it
+describes anonymous access or `SHOWCASE_ENABLED`.
+
 This guide is for the repository's `compose.yaml`. No hosting resources have been
 created and no public URL is claimed to be live. You will perform deployment.
 

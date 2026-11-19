@@ -6,6 +6,6 @@ export function loginDestination(url: string): string {
   const requested = current.searchParams.get("next");
   if (!requested?.startsWith("/") || requested.startsWith("//")) return "/dashboard";
   const destination = new URL(requested, current);
-  if (destination.origin !== current.origin || ["/login", "/register"].includes(destination.pathname)) return "/dashboard";
+  if (destination.origin !== current.origin || ["/login", "/register", "/verify-email"].includes(destination.pathname.replace(/\/+$/, ""))) return "/dashboard";
   return destination.pathname + destination.search + destination.hash;
 }

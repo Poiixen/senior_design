@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, StrictBool, StrictFloat, StrictInt, Stric
 from sqlalchemy.engine import Engine
 from starlette.middleware.sessions import SessionMiddleware
 
-from backend.api.auth import SESSION_IDLE_SECONDS, get_current_user, router as auth_router
+from backend.api.auth import get_current_user, router as auth_router
 from backend.api.security import BrowserSecurity, session_secret
 from backend.database import repository
 from backend.database.connection import (
@@ -79,7 +79,7 @@ async def lifespan(app: FastAPI):
         app.state.engine.dispose()
 
 
-app = FastAPI(title="Team Science API", lifespan=lifespan)
+app = FastAPI(title="Team Science API", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 if os.getenv("PUBLIC_RATE_LIMITS", "").lower() == "true":
     from backend.api.public_limits import PublicLimits
     app.add_middleware(PublicLimits)
@@ -95,12 +95,15 @@ allowed_origins = [
 # Signs the session cookie. Without SECRET_KEY a random key is used, so
 # logins reset whenever the server restarts; set it for stable sessions.
 secure_cookie = os.getenv("SESSION_COOKIE_SECURE", "").lower() in ("1", "true")
+app.state.session_signing_key = session_secret(os.getenv("SECRET_KEY"), secure_cookie)
 app.add_middleware(
     SessionMiddleware,
-    secret_key=session_secret(os.getenv("SECRET_KEY"), secure_cookie),
+    secret_key=app.state.session_signing_key,
     same_site="lax",
     https_only=secure_cookie,
-    max_age=SESSION_IDLE_SECONDS,
+    # Pending verification lasts ten minutes; authenticated sessions still have
+    # an independently enforced five-minute idle limit in the database.
+    max_age=10 * 60,
 )
 
 if allowed_origins:

@@ -10,17 +10,23 @@ from backend.api import auth
 from backend.database import repository
 from backend.database.connection import session_scope
 
-CREDENTIALS = {"email": "user@example.com", "password": "correct-horse"}
+CREDENTIALS = {"email": "user@example.com", "password": "correct-horse-battery"}
 
 
 def register(client, **overrides):
-    return client.post("/api/auth/register", json={**CREDENTIALS, **overrides})
+    credentials = {**CREDENTIALS, **overrides}
+    response = client.post("/api/auth/register", json=credentials)
+    if response.status_code == 201:
+        verified = client.post("/api/auth/verify-email", json={"code": app.state.test_outbox[credentials["email"].lower()]})
+        assert verified.status_code == 200
+        return verified
+    return response
 
 
 def test_register_succeeds(client):
     response = register(client)
 
-    assert response.status_code == 201
+    assert response.status_code == 200
     assert response.json() == {"id": 1, "email": "user@example.com"}
 
 
@@ -124,7 +130,7 @@ def test_session_cookie_is_http_only(client):
     response = register(client)
 
     assert "httponly" in response.headers["set-cookie"].lower()
-    assert "max-age=300" in response.headers["set-cookie"].lower()
+    assert "max-age=600" in response.headers["set-cookie"].lower()
 
 
 def test_session_expires_at_five_minutes_of_inactivity(client, monkeypatch):

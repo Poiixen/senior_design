@@ -12,7 +12,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const drawer = useRef<HTMLDialogElement>(null);
   const menu = useRef<HTMLButtonElement>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const isAuthPage = pathname === "/login" || pathname === "/register";
+  const isAuthPage = ["/login", "/register", "/verify-email"].includes(pathname.replace(/\/+$/, ""));
   const initials = account.user?.email.slice(0, 2).toUpperCase() ?? "TS";
   const closeDrawer = () => { drawer.current?.close(); setMobileOpen(false); };
   useEffect(() => { drawer.current?.close(); setMobileOpen(false); }, [pathname]);
