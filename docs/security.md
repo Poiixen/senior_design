@@ -18,7 +18,7 @@ docker compose -f compose.small.yaml run --rm --no-deps api python -m scripts.se
 docker compose -f compose.small.yaml up -d --no-build --pull never
 ```
 
-The setup command asks for two different passwords of at least 15 characters,
+The setup command asks for two different non-empty passwords,
 stores only Argon2 hashes, seeds/reuses the demo data, and revokes existing
 shared sessions. Run it again to rotate passwords. No SMTP is needed in shared
 mode. Back up the data volume before rollout; preserve `.env` and the volume.

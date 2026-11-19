@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-for (const role of ["admin", "demo"]) {
+for (const role of ["adminteamscience", "demo"]) {
   test(`shared ${role} access needs only its password`, async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 900 });
     let signedIn = false;

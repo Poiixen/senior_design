@@ -51,7 +51,7 @@ a stable address rather than opening SSH broadly.
    ```
 
    This backs up the app data, stops the API briefly, and asks for two different
-   passwords of at least 15 characters. Password entry is hidden and only Argon2
+   non-empty passwords. Password entry is hidden and only Argon2
    hashes are stored. Keep them in your password manager. It then activates the
    prepared release. If password setup fails, the previous API is restarted.
    Existing uploaded data is preserved. Demo access is read-only; admin has its

@@ -125,7 +125,7 @@ def register(credentials: Credentials, request: Request) -> dict:
 def login(credentials: Credentials, request: Request) -> dict:
     email = auth_service.normalize_email(credentials.email)
     if shared_access():
-        email = {"admin": ADMIN_EMAIL, "demo": EMAIL}.get(email, "invalid-shared-account")
+        email = {"admin": ADMIN_EMAIL, "adminteamscience": ADMIN_EMAIL, "demo": EMAIL}.get(email, "invalid-shared-account")
     security.limit_auth(request, email, time())
     with session_scope(request.app.state.engine) as session:
         user = auth_service.authenticate_user(session, email, credentials.password)
