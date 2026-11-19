@@ -1,5 +1,36 @@
 # Security controls
 
+## Current deployment: admin and demo passwords
+
+`AUTH_MODE=shared` is now the default. The login screen offers Admin and Demo,
+each with its own password. Registration and email verification endpoints are
+closed in this mode; existing personal accounts cannot access the product.
+Their data is preserved. Admin can upload and analyze its own datasets. Demo
+can read the seeded sample reports and deterministic suggestions, but cannot
+write or use AI chat. Admin does not gain access to other users' private reports.
+
+After rebuilding/loading both images, set `AUTH_MODE=shared` in the server
+`.env`, stop the API, and configure passwords interactively:
+
+```bash
+docker compose -f compose.small.yaml stop api
+docker compose -f compose.small.yaml run --rm --no-deps api python -m scripts.setup_shared_access
+docker compose -f compose.small.yaml up -d --no-build --pull never
+```
+
+The setup command asks for two different passwords of at least 15 characters,
+stores only Argon2 hashes, seeds/reuses the demo data, and revokes existing
+shared sessions. Run it again to rotate passwords. No SMTP is needed in shared
+mode. Back up the data volume before rollout; preserve `.env` and the volume.
+No default passwords are shipped. Both images must be rebuilt, and the API
+image must include `scripts/setup_shared_access.py`.
+
+Session expiry, logout revocation, rate limits, report ownership, HTTPS cookies,
+and browser request protections still apply. The email-verification workflow
+below is retained for a later `AUTH_MODE=verified` deployment.
+
+## Optional verified-account mode
+
 The website requires login and email verification before any product page is
 rendered, including the homepage, documentation, and examples. Only `/login`,
 `/register`, and `/verify-email` are public pages. The server checks sessions with

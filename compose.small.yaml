@@ -6,9 +6,10 @@ x-logging: &logging
     max-file: "2"
 services:
   api:
-    image: team-science-api:showcase
+    image: ${API_IMAGE:-team-science-api:showcase}
     restart: unless-stopped
     environment:
+      AUTH_MODE: ${AUTH_MODE:-shared}
       SECRET_KEY: ${SECRET_KEY:?Set a persistent random SECRET_KEY}
       SESSION_COOKIE_SECURE: "true"
       DATABASE_PATH: /data/analysis.sqlite3
@@ -39,7 +40,7 @@ services:
       start_period: 90s
     logging: *logging
   frontend:
-    image: team-science-frontend:showcase
+    image: ${FRONTEND_IMAGE:-team-science-frontend:showcase}
     restart: unless-stopped
     environment:
       HOST: 0.0.0.0

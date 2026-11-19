@@ -1,3 +1,4 @@
+import { getAuthMode } from "~/lib/api";
 import { Form, Link, redirect, useNavigation, useSearchParams } from "react-router";
 import { resendVerification, verifyEmail } from "~/lib/api";
 import { loginDestination } from "~/lib/session";
@@ -31,3 +32,9 @@ export default function VerifyEmail({ actionData }: Route.ComponentProps) {
     <p>Check your spam folder. If you closed the original browser or need a different email, <Link to="/login">sign in again</Link> or <Link to="/register">create an account</Link>.</p>
   </section>;
 }
+
+export async function clientLoader() {
+  if (await getAuthMode() === "shared") throw redirect("/login");
+  return null;
+}
+export function HydrateFallback() { return <p role="status">Checking access...</p>; }

@@ -153,7 +153,7 @@ function ReportWorkspace({ report, isSample }: { report: AnalysisReport; isSampl
       {view === "outliers" && <OutlierTable report={report} />}
 
       <footer className="report-footer">
-        <Link className="button button-secondary" to={isSample ? "/register" : "/upload"}>{isSample ? "Create an account to analyze your data" : "Upload another dataset"} <span aria-hidden="true">→</span></Link>
+        <Link className="button button-secondary" to={isSample ? "/login" : "/upload"}>{isSample ? "Open your workspace" : "Upload another dataset"} <span aria-hidden="true">→</span></Link>
         <span className="muted">{isSample ? "Sample analysis" : `Analysis #${report.analysis_id}`}</span>
       </footer>
     </div>

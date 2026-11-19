@@ -18,6 +18,7 @@ from backend.services import account_security
 @pytest.fixture(autouse=True)
 def verification_outbox(monkeypatch):
     """Capture delivery only; real verification and access checks stay enabled."""
+    monkeypatch.setenv("AUTH_MODE", "verified")
     outbox = {}
     monkeypatch.setattr(account_security, "send_verification_email", lambda email, code: outbox.update({email: code}))
     monkeypatch.setattr(app.state, "test_outbox", outbox, raising=False)

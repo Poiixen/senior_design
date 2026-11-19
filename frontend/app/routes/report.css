@@ -164,6 +164,34 @@
 .suggestions-heading .button { flex: none; }
 .suggestions-panel .notice-error { align-items: center; justify-content: space-between; }
 .suggestions-results { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.suggestions-heading .muted { margin: 6px 0 0; max-width: 55ch; }
+.suggestions-context { border-bottom: 1px solid var(--color-border); padding-bottom: 12px; font-size: 13px; }
+.suggestions-context > summary { cursor: pointer; padding-block: 10px; color: var(--color-muted); }
+.suggestions-context > div { padding-top: 12px; }
+.suggestions-count { margin: 0; font-size: 13px; color: var(--color-muted); }
+.suggestions-panel .suggestion-card-condensed { background: transparent; gap: 10px; padding: 22px; }
+.suggestion-card-condensed h3 { margin: 0; font-size: 17px; line-height: 1.45; }
+.suggestion-card-condensed p { margin: 0; line-height: 1.65; max-width: 80ch; }
+.suggestion-card-condensed .finding-takeaway { color: var(--color-text); }
+.suggestion-card-condensed .finding-next-step { display: grid; gap: 4px; padding: 12px 14px; background: var(--color-soft); border-radius: 8px; }
+.finding-next-step strong { color: var(--color-text); font-size: 12px; }
+.suggestion-card-condensed .finding-caution { border-left: 3px solid var(--color-border); padding-left: 12px; font-size: 13px; }
+.finding-support { margin-top: 2px; border-top: 1px solid var(--color-border); }
+.finding-support > summary { cursor: pointer; min-height: 44px; padding: 14px 0 4px; font-size: 13px; font-weight: 600; color: var(--color-primary); }
+.finding-support-content { display: grid; gap: 14px; padding-top: 16px; }
+.finding-support-content ul { margin: 0; padding-left: 20px; line-height: 1.7; }
+.finding-support-content h4 { margin: 0; }
+.finding-support-content .evidence-visual { margin: 0; }
+.suggestions-more { justify-self: center; }
+.suggestions-followup { padding: 0 24px; }
+.suggestions-followup > summary { cursor: pointer; padding: 20px 0; font-weight: 600; }
+.suggestions-followup > summary .muted { margin-left: 12px; font-size: 13px; font-weight: 400; }
+.suggestions-followup .report-chat { border: 0; box-shadow: none; padding: 8px 0 24px; }
+@media (max-width: 600px) {
+  .suggestions-panel .suggestion-card-condensed { padding: 16px; }
+  .suggestions-followup { padding-inline: 18px; }
+  .suggestions-followup > summary .muted { display: block; margin: 6px 0 0 18px; }
+}
 .suggestions-results > *, .suggestion-card > *, .finding-chart, .finding-statistics { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 .suggestion-card { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 12px; padding: 20px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-soft); }
 .finding-chart > summary, .finding-statistics > summary { min-height: 44px; cursor: pointer; padding-block: 10px; }
