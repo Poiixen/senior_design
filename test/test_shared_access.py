@@ -67,3 +67,11 @@ def test_personal_session_cannot_enter_shared_mode(client, monkeypatch):
 def test_default_is_shared(client, monkeypatch):
     monkeypatch.delenv("AUTH_MODE", raising=False)
     assert client.get("/api/auth/config").json() == {"mode": "shared"}
+
+
+def test_shared_passwords_can_be_short_and_named_admin_can_login(shared):
+    configure_accounts(app.state.analysis_service, "short-admin", "short-demo")
+    assert sign_in(shared, "adminteamscience", "short-admin").status_code == 200
+    assert sign_in(shared, "demo", "short-demo").status_code == 200
+    with pytest.raises(ValueError, match="required"):
+        configure_accounts(app.state.analysis_service, "", "short-demo")

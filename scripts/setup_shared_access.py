@@ -17,8 +17,8 @@ ADMIN_EMAIL = "admin@teamscience.invalid"
 
 
 def configure_accounts(service, admin_password, demo_password):
-    if min(len(admin_password), len(demo_password)) < 15:
-        raise ValueError("Use at least 15 characters for each password.")
+    if not admin_password or not demo_password:
+        raise ValueError("Both passwords are required.")
     if admin_password == demo_password:
         raise ValueError("Admin and demo passwords must be different.")
     seed_showcase(service)
@@ -35,7 +35,7 @@ def configure_accounts(service, admin_password, demo_password):
 def main():
     passwords = []
     for role in ["Admin", "Demo"]:
-        password = getpass(f"{role} password (15+ characters): ")
+        password = getpass(f"{role} password: ")
         if password != getpass(f"Confirm {role.lower()} password: "):
             raise SystemExit("Passwords did not match. No changes made.")
         passwords.append(password)
